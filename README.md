@@ -16,7 +16,6 @@ the following technologies:
   issues.
 * **PostgreSQL:**  (basic plan)  An advanced relational database management system. Reliable, flexible, and compatible
   with Django, it is ideal for storing and managing your application’s structured data.
-*
 * **Gunicorn:**(future plan) A WSGI server that acts as a bridge between web servers and your Django application in
   production. It handles requests efficiently and scales well, especially under high traffic.
 * **Django REST Framework:** (future plan) A powerful and flexible toolkit for building Web APIs on top of Django,
@@ -26,6 +25,19 @@ the following technologies:
 * **Nginx (optional/future):** A high-performance web server often used as a reverse proxy in front of Gunicorn to
   handle static files, load balancing, and SSL termination.
 
+### 🧠 Learning Goals
+
+This project is not only a technical implementation but also a personal learning exercise. The main objectives include:
+
+* Practicing collaborative workflows using **pull requests**.
+* Applying the **[Conventional Commits](https://www.conventionalcommits.org/)** specification to maintain a clean and
+  structured commit history.
+* Using **pytest** to write and run automated tests, fostering test-driven development and ensuring code reliability.
+* Improving discipline in version control and aligning with real-world software development practices.
+
+I’m open to feedback and suggestions — what else would you recommend to help me grow toward professional-level
+development?
+
 ## Project Goals
 
 - Build a clean and queryable **relational database** for bioactive peptides.
@@ -33,7 +45,6 @@ the following technologies:
 - Model relationships with **proteases**.
 - Provide a **user-friendly web interface** for search, filtering and data export.
 - Support **API endpoints** for programmatic access and data integration.
-
 
 ## Tech Stack
 
@@ -43,3 +54,9 @@ the following technologies:
 - **APIs:** Django REST Framework (planned)
 - **Containerization:** Docker (for easy deployment and environment management)
 
+## 📫 Contact
+
+For questions, ideas or collaboration proposals, contact:<br>
+
+* **[Maite Bernaus Gimeno]** – [[maite.bernaus@gmail..com]()] <br>
+* GitHub: [@MaiteBG](https://github.com/MaiteBG)
