@@ -11,18 +11,26 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+import environ
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+env = environ.Env(DEBUG=(bool, False))
+
+# BASE_DIR: three levels above settings.py
+ENV_PATH = os.path.join(BASE_DIR.parent, '.env')
+
+# Load the .env file
+environ.Env.read_env(ENV_PATH)
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-j2x!e3(26)#%eiklam#8sd6bg6sonbnnr&s^tx1dmqk$gifhp3'
-
+SECRET_KEY = env('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env('DEBUG')
 
 ALLOWED_HOSTS = []
 
@@ -35,6 +43,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'catalog',
+    'peptide_processing',
+    'logs',
 ]
 
 MIDDLEWARE = [
@@ -70,9 +81,21 @@ WSGI_APPLICATION = 'peptide_project.wsgi.application'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+    'default': {  # Connexion with admin
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': env('PEPTIDE_DB'),
+        'USER': env('POSTGRES_ADMIN'),
+        'PASSWORD': env('POSTGRES_ADMIN_PASS'),
+        'HOST': env('POSTGRES_HOST'),
+        'PORT': env('POSTGRES_PORT'),
+    },
+    'user': {  # Connexion with user
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': env('PEPTIDE_DB'),
+        'USER': env('POSTGRES_USER'),
+        'PASSWORD': env('POSTGRES_USER_PASS'),
+        'HOST': env('POSTGRES_HOST'),
+        'PORT': env('POSTGRES_PORT'),
     }
 }
 
