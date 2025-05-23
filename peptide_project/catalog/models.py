@@ -1,6 +1,5 @@
 from django.db import models
 
-
 class Organism(models.Model):
     scientific_name = models.CharField(max_length=50, primary_key=True)
     common_name = models.CharField(max_length=50, blank=True, null=True)
