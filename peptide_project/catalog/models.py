@@ -1,6 +1,7 @@
-from django.core.exceptions import ValidationError
+from Bio import Entrez
 from django.db import models
 
+Entrez.email = "your.email@example.com"
 
 # --- PeptideSequence Model ---
 
@@ -127,13 +128,94 @@ class Organism(models.Model):
 
     scientific_name = models.CharField(max_length=50, primary_key=True)
     common_name = models.CharField(max_length=50, blank=True, null=True)
-    ncbi_url = models.URLField(max_length=120, blank=True, null=True)
+    kingdom = models.CharField(max_length=50, blank=True, null=True)
+    phylum = models.CharField(max_length=50, blank=True, null=True)
     class_name = models.CharField(max_length=50, blank=True, null=True)
-    subclass = models.CharField(max_length=50, blank=True, null=True)
+    ncbi_url = models.URLField(max_length=120, blank=True, null=True)
 
     class Meta:
         verbose_name = "Organism"
         verbose_name_plural = "Organisms"
+
+    @classmethod
+    def create_from_scientific_name(cls, scientific_name: str):
+        """
+        Creates and saves an Organism instance based on the scientific name.
+
+        If an organism with the given scientific name already exists in the database,
+        it returns that existing instance instead of creating a new one.
+
+        Args:
+            scientific_name (str): The scientific name of the organism to find or create.
+
+        Returns:
+            Organism: The existing or newly created Organism instance.
+
+        Raises:
+            ValueError: If no organism data is found for the given scientific name.
+        """
+        # Check if organism already exists in the database
+        existing = cls.objects.filter(scientific_name=scientific_name).first()
+        if existing:
+            return existing
+
+        # Fetch organism data from external source (NCBI)
+        organism_data = cls._find_organism_data(scientific_name)
+
+        # Create and save new organism instance
+        organism = cls(**organism_data)
+        organism.save()
+        return organism
+
+    @staticmethod
+    def _find_organism_data(scientific_name: str) -> dict:
+        """
+        Queries the NCBI Taxonomy database to find detailed information
+        about an organism given its scientific name.
+
+        Args:
+            scientific_name (str): The scientific name to search for.
+
+        Returns:
+            dict: A dictionary with organism data including scientific name,
+                  common name, kingdom, phylum, class name, and NCBI URL.
+
+        Raises:
+            ValueError: If no organism or exact match is found for the given name.
+        """
+        # Search taxonomy database for the scientific name
+        with Entrez.esearch(db="taxonomy", term=scientific_name) as handle:
+            record = Entrez.read(handle)
+        id_list = record.get("IdList", [])
+
+        # If no IDs returned, organism does not exist in NCBI
+        if not id_list:
+            raise ValueError(f"No organism found for '{scientific_name}'")
+
+        # For each tax_id found, fetch detailed taxonomy record
+        for tax_id in id_list:
+            with Entrez.efetch(db="taxonomy", id=tax_id, retmode="xml") as handle:
+                records = Entrez.read(handle)
+
+            # Check for exact scientific name match in returned records
+            for rec in records:
+                if rec["ScientificName"].lower() == scientific_name.lower():
+                    # Build lineage dictionary: rank -> scientific name
+                    lineage = {item["Rank"]: item["ScientificName"] for item in rec.get("LineageEx", [])}
+
+                    # Return the organism data extracted
+                    return {
+                        "scientific_name": scientific_name,
+                        "common_name": rec.get("OtherNames", {}).get("GenbankCommonName"),
+                        "kingdom": lineage.get("kingdom"),
+                        "phylum": lineage.get("phylum"),
+                        "class_name": lineage.get("class"),
+                        "ncbi_url": f"https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id={tax_id}"
+                    }
+
+        # If no exact match found, raise an error
+        raise ValueError(f"No exact match found for '{scientific_name}'")
+
 
     def __str__(self):
         """
@@ -148,16 +230,17 @@ class Organism(models.Model):
         """
         Returns a developer-friendly representation of the organism instance.
 
-        Includes scientific name, common name, NCBI URL, class name, and subclass,
+        Includes scientific name, common name, NCBI URL, kingdom, phylum, and class name,
         with fallback messages for any missing fields.
         """
         common = self.common_name or "Common name not specified"
         ncbi = self.ncbi_url or "NCBI URL not provided"
+        kingdom = self.kingdom or "Kingdom not specified"
+        phylum = self.phylum or "Phylum not specified"
         class_name = self.class_name or "Class not specified"
-        subclass = self.subclass or "Subclass not specified"
         return (f"<Organism(scientific_name='{self.scientific_name}', "
-                f"common_name='{common}', ncbi_url='{ncbi}', "
-                f"class_name='{class_name}', subclass='{subclass}')>")
+                f"common_name='{common}', kingdom='{kingdom}', phylum='{phylum}', "
+                f"class_name='{class_name}', ncbi_url='{ncbi}')>")
 
     def __format__(self, spec=None):
         """
@@ -175,16 +258,18 @@ class Organism(models.Model):
         sci_name = self.scientific_name or "Scientific name not specified"
         common = self.common_name or "Common name not specified"
         ncbi = self.ncbi_url or "NCBI URL not provided"
+        kingdom = self.kingdom or "Kingdom not specified"
+        phylum = self.phylum or "Phylum not specified"
         class_name = self.class_name or "Class not specified"
-        subclass = self.subclass or "Subclass not specified"
 
         if spec == "all":
             return (
                 f"Scientific Name: {sci_name}\n"
                 f"Common Name: {common}\n"
                 f"NCBI URL: {ncbi}\n"
+                f"Kingdom: {kingdom}\n"
+                f"Phylum: {phylum}\n"
                 f"Class: {class_name}\n"
-                f"Subclass: {subclass}"
             )
         else:
             return f"Organism: {sci_name} ({common})"
