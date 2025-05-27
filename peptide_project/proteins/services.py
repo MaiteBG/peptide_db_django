@@ -146,11 +146,8 @@ def get_protein_metadata(accessions: list[str]) -> list[dict]:
 
 def create_proteins_from_metadata(proteins_metadata: list[dict], organism=None, reference=None):
     """
-    Create Protein instances from a list of protein metadata dictionaries.
-
-    Each dict should include at least:
-    - 'sequence': peptide sequence string (amino acid sequence)
-    - 'protein_name', 'gene_name', 'protein_function', 'uniprot_code' (optional)
+    Create Protein instances from a list of protein metadata dictionaries,
+    only if a Protein with the same sequence, gene_name, and protein_name does not already exist.
 
     Args:
         proteins_metadata (list[dict]): List of protein metadata dictionaries.
@@ -167,19 +164,19 @@ def create_proteins_from_metadata(proteins_metadata: list[dict], organism=None, 
         if not seq_str:
             continue  # skip if no sequence info
 
-        # Busca o crea la secuencia PeptideSequence asociada
-        sequence_obj, created = PeptideSequence.objects.get_or_create(
+        # Get or create peptide sequence
+        sequence_obj, _ = PeptideSequence.objects.get_or_create(
             aa_seq=seq_str,
             defaults={
                 "organism": organism,
                 "reference": reference,
                 "uniprot_code": meta.get("accession"),
-                "is_reviewed": True,  # asumiendo que viene de UniProt reviewed
-                # Puedes añadir más campos aquí si los tienes en meta
+                "is_reviewed": True,
             }
         )
 
-        protein = Protein.objects.create(
+        # Create protein instance
+        protein = Protein.objects.get_or_create(
             sequence=sequence_obj,
             protein_name=meta.get("protein_name"),
             gene_name=meta.get("gene_name"),

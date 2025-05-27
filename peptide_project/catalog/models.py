@@ -1,4 +1,6 @@
+import requests
 from Bio import Entrez
+from django.core.exceptions import ValidationError
 from django.db import models
 
 Entrez.email = "your.email@example.com"
@@ -7,25 +9,32 @@ Entrez.email = "your.email@example.com"
 
 class PeptideSequence(models.Model):
     """
-    Represents a unique peptide sequence.
-    Includes information about its source, scientific reference, and originating organism.
+    Represents a unique peptide sequence associated with an organism
+    and one or more scientific references.
+
+    Attributes:
+        aa_seq (TextField): Amino acid sequence of the peptide.
+        organism (ForeignKey): Organism from which the peptide sequence originates.
+        references (ManyToManyField): References linked to this peptide sequence.
+        uniprot_code (CharField): Optional UniProt identifier.
+        date_added (DateField): Timestamp when the entry was created.
     """
 
-    aa_seq = models.TextField()  # Amino acid sequence of the peptide
+    aa_seq = models.TextField()
     organism = models.ForeignKey(
-        'catalog.Organism', null=True, blank=True, on_delete=models.SET_NULL)  # Link to the originating organism
-    reference = models.ForeignKey(
-        'catalog.Reference', null=True, blank=True, on_delete=models.SET_NULL)  # Link to the scientific reference
-    source = models.CharField(max_length=100, null=True, blank=True)  # Experimental or literature source
-    uniprot_code = models.CharField(max_length=10, null=True, blank=True)  # Optional UniProt identifier
-    is_reviewed = models.BooleanField(default=False)  # Whether the sequence has been curated/reviewed
-    date_added = models.DateField(auto_now_add=True)  # Automatically set date when entry is created
+        'catalog.Organism', null=True, blank=True, on_delete=models.SET_NULL
+    )
+    references = models.ManyToManyField(
+        'catalog.Reference', related_name='proteins'
+    )
+    uniprot_code = models.CharField(max_length=10, null=True, blank=True)
+    date_added = models.DateField(auto_now_add=True)
 
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=['aa_seq', 'source', 'organism', 'reference'],
-                name='unique_peptideseq_source_org_ref'
+                fields=['aa_seq', 'organism'],
+                name='unique_peptideseq_org'
             )
         ]
         verbose_name = "Peptide Sequence"
@@ -33,70 +42,76 @@ class PeptideSequence(models.Model):
 
     def get_seq_preview(self, max_length=30):
         """
-        Returns a truncated preview of the peptide sequence.
+        Generate a truncated preview of the peptide sequence for display.
 
-        If the sequence is longer than `max_length`, it returns a preview
-        showing the beginning and end of the sequence with an ellipsis (...) in the middle.
+        If the sequence length exceeds max_length, it returns the first and last
+        part separated by ellipsis (...).
 
         Args:
-            max_length (int): Maximum number of characters to display (including ellipsis).
+            max_length (int): Maximum length of the preview string (default 30).
 
         Returns:
-            str: Truncated sequence preview or the full sequence if short enough.
+            str: Truncated sequence preview or full sequence if short enough.
         """
         if len(self.aa_seq) <= max_length:
             return self.aa_seq
-        half = (max_length - 3) // 2  # Leave space for ellipsis (...)
+        half = (max_length - 3) // 2  # Reserve 3 chars for ellipsis
         return f"{self.aa_seq[:half]}...{self.aa_seq[-half:]}"
 
     def __str__(self):
         """
-        Returns a short string representation of the peptide sequence.
-
-        Useful for displaying the object in admin panels or dropdowns.
+        Return a concise string representation of the peptide sequence,
+        useful for admin panels or dropdown lists.
 
         Returns:
-            str: A truncated sequence preview.
+            str: Truncated sequence preview.
         """
         seq_preview = self.get_seq_preview()
         return f"{seq_preview}"
 
     def __repr__(self):
         """
-        Returns a detailed, unambiguous string representation for developers.
+        Return a detailed and unambiguous developer-friendly string
+        representation of the instance.
 
-        Includes object ID (if saved), truncated sequence, organism, and reference.
+        Includes instance id, truncated sequence, organism scientific name,
+        and up to two associated references.
 
         Returns:
-            str: Developer-friendly representation of the peptide sequence instance.
+            str: Developer-focused representation string.
         """
         id_part = f"id={self.id}" if self.id else "unsaved"
         aa_seq_preview = self.get_seq_preview()
-        organism = (self.organism and self.organism.scientific_name) or "No organism specified"
-        reference = (self.reference and self.reference.pmid_doi_db) or "No reference provided"
+        organism = self.organism.scientific_name if self.organism else "No organism specified"
+        refs = self.references.all()
+        if refs.exists():
+            ref_list = ", ".join(str(ref) for ref in refs[:2])
+        else:
+            ref_list = "No references provided"
 
         return (
             f"<PeptideSequence({id_part}, aa_seq='{aa_seq_preview}', "
-            f"organism='{organism}', reference='{reference}')>"
+            f"organism='{organism}', references='{ref_list}')>"
         )
 
     def __format__(self, spec=None):
         """
-        Returns a formatted string representation based on the given specifier.
+        Format the instance into a string according to the given specifier.
 
-        If `spec == "all"`, returns a detailed multiline report.
-        Otherwise, returns a concise summary of the peptide sequence.
+        If spec == "all", returns a detailed multi-line report.
+        Otherwise, returns a concise summary.
 
         Args:
-            spec (str, optional): Format specifier. Use "all" for full detail.
+            spec (str, optional): Format specifier, use "all" for full detail.
 
         Returns:
-            str: Formatted string representation of the peptide sequence.
+            str: Formatted string representation.
         """
         sequence_id = f"{self.id}" if self.id else "(unsaved)"
         seq_preview = self.get_seq_preview()
-        organism_str = (self.organism and self.organism.scientific_name) or "Organism not specified"
-        reference_str = (self.reference and self.reference.pmid_doi_db) or "Reference not provided"
+        organism_str = self.organism.scientific_name if self.organism else "Organism not specified"
+        refs = self.references.all()
+        reference_str = ", ".join(str(ref) for ref in refs) if refs.exists() else "Reference not provided"
 
         if spec == "all":
             format_str = (
@@ -104,19 +119,42 @@ class PeptideSequence(models.Model):
                 f"Sequence: {self.aa_seq}\n"
                 f"Sequence Length: {len(self.aa_seq)}\n"
                 f"Organism: {organism_str}\n"
-                f"Reference: {reference_str}\n"
-                f"Source: {self.source or 'Source not specified'}\n"
+                f"References: {reference_str}\n"
                 f"UniProt code: {self.uniprot_code or 'UniProt code not available'}\n"
-                f"Reviewed: {'Yes' if self.is_reviewed else 'No'}\n"
                 f"Date added: {self.date_added or 'Date not available'}"
             )
         else:
             format_str = (
                 f"PeptideSequence #{sequence_id}: {seq_preview} "
-                f"from {organism_str} (Ref: {reference_str}) | Length: {len(self.aa_seq)}"
+                f"from {organism_str} (Refs: {reference_str}) | Length: {len(self.aa_seq)}"
             )
 
         return format_str
+
+    def add_reference(self, reference):
+        """
+        Adds a Reference instance to this PeptideSequence's references if it
+        does not already exist. Also validates that the organism associated
+        with the peptide sequence and the reference match (if both are set).
+
+        Args:
+            reference (Reference): Reference instance to add.
+
+        Raises:
+            ValueError: If the organisms of the sequence and reference do not match.
+        """
+        # Validate organism match if both organisms exist
+        if self.organism and hasattr(reference, 'organism') and reference.organism:
+            if self.organism != reference.organism:
+                raise ValueError(
+                    "The organism of the peptide sequence and the reference do not match."
+                )
+
+        # Add reference only if not already associated
+        if not self.references.filter(pk=reference.pk).exists():
+            self.references.add(reference)
+
+
 
 
 # --- Organism Model ---
@@ -275,37 +313,110 @@ class Organism(models.Model):
             return f"Organism: {sci_name} ({common})"
 
 
+class Database(models.Model):
+    """
+    Stores a scientific database
+    """
+    database_name = models.CharField(max_length=100, blank=True, primary_key=True)
+    url_pattern = models.URLField(blank=True, null=True)
+    default_url = models.URLField(blank=True, null=True)
+
+
 # --- Reference Model ---
 
 class Reference(models.Model):
     """
     Stores a scientific reference identifier (PMID, DOI, or other).
     """
+    doi = models.CharField(max_length=100, blank=True, null=True)
+    database = models.ForeignKey('catalog.Database', null=True, blank=True, on_delete=models.SET_NULL)
+    db_accession = models.CharField(max_length=100, blank=True, null=True)
 
-    pmid_doi_db = models.CharField(max_length=40, primary_key=True)
-    url = models.URLField(max_length=200, blank=True, null=True)
+    def clean(self):
+        # Ensure at least doi or database is provided
+        if not self.doi and not self.database:
+            raise ValidationError('Either DOI or database must be provided.')
+
+    def save(self, *args, **kwargs):
+        self.full_clean()  # Llama a clean() antes de guardar
+        super().save(*args, **kwargs)
+
+    def get_reference_info_from_doi(self) -> dict | None:
+        """
+        Fetches bibliographic information for a given DOI using the CrossRef API.
+
+        Args:
+            doi (str): The DOI string.
+
+        Returns:
+            dict | None: A dictionary with bibliographic info including title, authors,
+                         journal, year, publisher, URL, etc. Returns None if not found.
+        """
+        url = f"https://api.crossref.org/works/{self.doi}"
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            data = response.json()
+
+            # CrossRef stores main info under 'message'
+            message = data.get("message", {})
+
+            # Parse authors as list of strings "Firstname Lastname"
+            authors = []
+            for author in message.get("author", []):
+                given = author.get("given", "")
+                family = author.get("family", "")
+                full_name = f"{given} {family}".strip()
+                if full_name:
+                    authors.append(full_name)
+
+            # Prepare result dict
+            result = {
+                "title": message.get("title", [""])[0],  # Title is a list
+                "authors": authors,
+                "journal": message.get("container-title", [""])[0],  # Journal or book title
+                "year": message.get("published-print", {}).get("date-parts", [[None]])[0][0] or
+                        message.get("published-online", {}).get("date-parts", [[None]])[0][0],
+                "publisher": message.get("publisher"),
+                "doi": self.doi,
+                "url": message.get("URL"),
+                "type": message.get("type"),
+            }
+
+            return result
+
+        except requests.HTTPError as e:
+            print(f"HTTP error when fetching DOI {self.doi}: {e}")
+            return None
+        except Exception as e:
+            print(f"Error when fetching DOI {self.doi}: {e}")
+            return None
+
+    # def get_reference_info_from_database(self):
 
     def __str__(self):
         """
         Returns a simple string representation of the Reference,
-        showing the primary identifier (PMID or DOI).
+        showing the primary identifier (DOI or db_accession).
 
         Returns:
             str: The reference ID or a placeholder if not set.
         """
-        return self.pmid_doi_db or "No reference ID"
+        # Prefer DOI, then db_accession, else placeholder
+        return self.doi or self.db_accession or "No reference ID"
 
     def __repr__(self):
         """
         Returns a detailed developer-friendly string representation
-        of the Reference, including the ID and URL.
+        of the Reference, including the DOI, database, and accession.
 
         Returns:
             str: A formatted string showing key fields.
         """
-        ref_id = self.pmid_doi_db or "(unsaved)"
-        url = self.url or "No URL"
-        return f"<Reference(pmid_doi_db='{ref_id}', url='{url}')>"
+        doi_str = self.doi or "(no DOI)"
+        db_name = self.database.database_name if self.database else "(no database)"
+        accession_str = self.db_accession or "(no accession)"
+        return f"<Reference(doi='{doi_str}', database='{db_name}', db_accession='{accession_str}')>"
 
     def __format__(self, spec=None):
         """
@@ -319,13 +430,17 @@ class Reference(models.Model):
         Returns:
             str: Formatted string based on the spec.
         """
-        ref_id = self.pmid_doi_db or "(unsaved)"
-        url = self.url or "No URL"
+        doi_str = self.doi or "(no DOI)"
+        db_name = self.database.database_name if self.database else "(no database)"
+        accession_str = self.db_accession or "(no accession)"
 
         if spec == "all":
             return (
-                f"Reference ID: {ref_id}\n"
-                f"URL: {url}"
+                f"Reference Details:\n"
+                f"  DOI: {doi_str}\n"
+                f"  Database: {db_name}\n"
+                f"  Accession: {accession_str}"
             )
         else:
-            return f"Reference: {ref_id}"
+            # Brief single line summary
+            return f"Reference: {doi_str} ({db_name})"

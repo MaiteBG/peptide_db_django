@@ -26,22 +26,6 @@ class Protein(models.Model):
         verbose_name = "Protein"
         verbose_name_plural = "Proteins"
 
-    def clean(self):
-        """
-        Validates that the related peptide sequence has both organism and reference defined.
-        """
-        if not self.sequence.organism:
-            raise ValidationError("Protein must have an organism.")
-        if not self.sequence.reference:
-            raise ValidationError("Protein must have a reference.")
-
-    def save(self, *args, **kwargs):
-        """
-        Perform validation before saving.
-        """
-        self.full_clean()
-        super().save(*args, **kwargs)
-
     def __str__(self):
         """
         Returns a concise string representation of the protein.
