@@ -85,7 +85,7 @@ class PeptideSequence(models.Model):
         organism = self.organism.scientific_name if self.organism else "No organism specified"
         refs = self.references.all()
         if refs.exists():
-            ref_list = ", ".join(str(ref) for ref in refs[:2])
+            ref_list = ", ".join(ref.__repr__() for ref in refs[:2])
         else:
             ref_list = "No references provided"
 
@@ -111,9 +111,10 @@ class PeptideSequence(models.Model):
         seq_preview = self.get_seq_preview()
         organism_str = self.organism.scientific_name if self.organism else "Organism not specified"
         refs = self.references.all()
-        reference_str = ", ".join(str(ref) for ref in refs) if refs.exists() else "Reference not provided"
 
         if spec == "all":
+            reference_str = ", ".join(
+                ref.__format__("all") for ref in refs) if refs.exists() else "Reference not provided"
             format_str = (
                 f"ID: {sequence_id}\n"
                 f"Sequence: {self.aa_seq}\n"
@@ -124,9 +125,10 @@ class PeptideSequence(models.Model):
                 f"Date added: {self.date_added or 'Date not available'}"
             )
         else:
+            reference_str = ", ".join(ref.__format__() for ref in refs) if refs.exists() else "Reference not provided"
             format_str = (
                 f"PeptideSequence #{sequence_id}: {seq_preview} "
-                f"from {organism_str} (Refs: {reference_str}) | Length: {len(self.aa_seq)}"
+                f"from {organism_str} | Length: {len(self.aa_seq)} | (Refs: {reference_str}) "
             )
 
         return format_str
@@ -315,11 +317,53 @@ class Organism(models.Model):
 
 class Database(models.Model):
     """
-    Stores a scientific database
+    Stores a scientific database.
     """
     database_name = models.CharField(max_length=100, blank=True, primary_key=True)
     url_pattern = models.URLField(blank=True, null=True)
     default_url = models.URLField(blank=True, null=True)
+
+    def __str__(self):
+        """
+        Return a simple string representation of the database.
+
+        Returns:
+            str: The database name or a placeholder if not set.
+        """
+        return self.database_name or "Unnamed Database"
+
+    def __repr__(self):
+        """
+        Return a detailed, developer-friendly string representation of the database.
+
+        Returns:
+            str: Formatted string with database name and URL pattern.
+        """
+        name = self.database_name or "(no name)"
+        url_pat = self.url_pattern or "(no url pattern)"
+        return f"<Database(database_name='{name}', url_pattern='{url_pat}')>"
+
+    def __format__(self, spec=None):
+        """
+        Provide custom formatted string representations.
+
+        If spec == "all", returns detailed multiline information.
+        Otherwise, returns the database name.
+
+        Args:
+            spec (str, optional): Format specifier.
+
+        Returns:
+            str: Formatted string based on the spec.
+        """
+        if spec == "all":
+            return (
+                f"Database Name: {self.database_name or '(no name)'}\n"
+                f"URL Pattern: {self.url_pattern or '(no url pattern)'}\n"
+                f"Default URL: {self.default_url or '(no default url)'}"
+            )
+        else:
+            return str(self)
 
 
 # --- Reference Model ---
@@ -414,7 +458,7 @@ class Reference(models.Model):
             str: A formatted string showing key fields.
         """
         doi_str = self.doi or "(no DOI)"
-        db_name = self.database.database_name if self.database else "(no database)"
+        db_name = f"{self.database.database_name} ({self.database.url_pattern.replace('{id}', self.db_accession)})" if self.database and self.database.url_pattern and self.db_accession else "(no database)"
         accession_str = self.db_accession or "(no accession)"
         return f"<Reference(doi='{doi_str}', database='{db_name}', db_accession='{accession_str}')>"
 
@@ -431,10 +475,12 @@ class Reference(models.Model):
             str: Formatted string based on the spec.
         """
         doi_str = self.doi or "(no DOI)"
-        db_name = self.database.database_name if self.database else "(no database)"
         accession_str = self.db_accession or "(no accession)"
 
         if spec == "all":
+            db_name = f"{self.database.database_name} ({self.database.url_pattern.replace('{id}', self.db_accession)})" if self.database and self.database.url_pattern and self.db_accession else "(no database)"
+
+
             return (
                 f"Reference Details:\n"
                 f"  DOI: {doi_str}\n"
@@ -442,5 +488,8 @@ class Reference(models.Model):
                 f"  Accession: {accession_str}"
             )
         else:
+            db_name = f"{self.database.database_name} ({self.database.url_pattern.replace('{id}', self.db_accession)})" if self.database and self.database.url_pattern and self.db_accession else "(no database)"
+
+
             # Brief single line summary
             return f"Reference: {doi_str} ({db_name})"
