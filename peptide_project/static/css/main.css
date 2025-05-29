@@ -1,0 +1,49 @@
+body {
+    font-family: 'Segoe UI', sans-serif;
+    background-color: #f4f6f8;
+    margin: 0;
+    padding: 2rem;
+}
+
+.organism-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.organism-card {
+    background-color: white;
+    border-radius: 10px;
+    padding: 1rem 1.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    line-height: 1;
+    transition: transform 0.2s;
+}
+
+.organism-card:hover {
+    transform: translateY(-1px);
+}
+
+.organism-card a {
+    color: #0077cc;
+    text-decoration: none;
+}
+
+
+.no-results {
+    color: #888;
+    font-style: italic;
+    margin-top: 2rem;
+}
+.organism-block {
+  margin-bottom: 2rem;
+}
+
+.organism-details {
+  margin-left: 2rem; /* "tabulación" visual */
+}
+
+.taxonomy-details {
+  margin-left: 2rem;
+  margin-top: 0.5rem;
+}

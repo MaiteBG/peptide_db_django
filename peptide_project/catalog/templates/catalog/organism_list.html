@@ -1,0 +1,23 @@
+<!-- organism_list.html -->
+{% extends "catalog/base.html" %}
+{% load static %}
+{% static 'css/main.css' %}
+
+{% block title %}Lista de Organismos{% endblock %}
+
+{% block content %}
+<!-- contenido de esta página -->
+
+
+<h1>Organisms</h1>
+
+<div class="organism-container">
+    {% for organism in organisms %}
+    <div class="organism-card">
+        {{ organism.formatted|safe }}
+    </div>
+    {% empty %}
+    <p class="no-results">No organisms found.</p>
+    {% endfor %}
+</div>
+{% endblock %}

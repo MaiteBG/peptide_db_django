@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+{% load static %}
+<html>
+<head>
+    <link rel="stylesheet" href="{% static 'css/main.css' %}">
+    <title>{% block title %}Peptide Database{% endblock %}</title>
+</head>
+<body>
+<header>
+    <!-- Aquí tu menú o logo -->
+</header>
+
+<main>
+    {% block content %}
+    <!-- El contenido específico de cada página va aquí -->
+    {% endblock %}
+</main>
+
+<footer>
+    <!-- Pie de página -->
+</footer>
+</body>
+<script>
+    function toggleTaxonomy(button) {
+      const panel = button.nextElementSibling;
+      const isVisible = panel.style.display === "block";
+      panel.style.display = isVisible ? "none" : "block";
+      button.textContent = isVisible ? "Show Taxonomy Details" : "Hide Taxonomy Details";
+    }
+</script>
+
+</html>

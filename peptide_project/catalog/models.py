@@ -158,8 +158,6 @@ class PeptideSequence(models.Model):
             self.references.add(reference)
 
 
-
-
 # --- Organism Model ---
 
 class Organism(models.Model):
@@ -177,36 +175,6 @@ class Organism(models.Model):
     class Meta:
         verbose_name = "Organism"
         verbose_name_plural = "Organisms"
-
-    @classmethod
-    def create_from_scientific_name(cls, scientific_name: str):
-        """
-        Creates and saves an Organism instance based on the scientific name.
-
-        If an organism with the given scientific name already exists in the database,
-        it returns that existing instance instead of creating a new one.
-
-        Args:
-            scientific_name (str): The scientific name of the organism to find or create.
-
-        Returns:
-            Organism: The existing or newly created Organism instance.
-
-        Raises:
-            ValueError: If no organism data is found for the given scientific name.
-        """
-        # Check if organism already exists in the database
-        existing = cls.objects.filter(scientific_name=scientific_name).first()
-        if existing:
-            return existing
-
-        # Fetch organism data from external source (NCBI)
-        organism_data = cls._find_organism_data(scientific_name)
-
-        # Create and save new organism instance
-        organism = cls(**organism_data)
-        organism.save()
-        return organism
 
     @staticmethod
     def _find_organism_data(scientific_name: str) -> dict:
@@ -257,6 +225,23 @@ class Organism(models.Model):
         # If no exact match found, raise an error
         raise ValueError(f"No exact match found for '{scientific_name}'")
 
+    @classmethod
+    def get_or_create_organism(csl, **kwargs):
+        if len(kwargs) == 1:
+            # Caso: solo se pasa el scientific_name
+            _, scientific_name = next(iter(kwargs.items()))
+            try:
+                data = Organism._find_organism_data(scientific_name)
+                print(data)
+                organism, created = Organism.objects.get_or_create(scientific_name=data["scientific_name"],
+                                                                   defaults=data)
+                return organism, created
+            except ValueError as e:
+                raise ValueError(f"No se pudo crear el organismo desde '{scientific_name}': {e}")
+
+        # Caso general: usar get_or_create con lo que se pasa
+        organism, created = Organism.objects.get_or_create(**kwargs)
+        return organism, created
 
     def __str__(self):
         """
@@ -306,14 +291,36 @@ class Organism(models.Model):
         if spec == "all":
             return (
                 f"Scientific Name: {sci_name}\n"
-                f"Common Name: {common}\n"
-                f"NCBI URL: {ncbi}\n"
-                f"Kingdom: {kingdom}\n"
-                f"Phylum: {phylum}\n"
-                f"Class: {class_name}\n"
+                f"\tCommon Name: {common}\n"
+                f"\tNCBI URL: {ncbi}\n"
+                f"\tKingdom: {kingdom}\n"
+                f"\tPhylum: {phylum}\n"
+                f"\tClass: {class_name}\n"
             )
         else:
             return f"Organism: {sci_name} ({common})"
+
+    def formatted(self) -> str:
+        return f"""
+        <div class="organism-block">
+            <p><h3><em>{self.scientific_name}</em></h3> </p>
+            <hr>
+            <div class="organism-details">
+                <p><strong>Common Name:</strong> {self.common_name}</p>
+                <p><strong>NCBI URL:</strong> <a href="{self.ncbi_url}" target="_blank">{self.ncbi_url}</a></p>
+                <div>
+                    <button type="button" class="toggle-taxonomy" onclick="toggleTaxonomy(this)">
+                        Show Taxonomy Details
+                    </button>
+                    <div class="taxonomy-details" style="display:none;">
+                        <p><strong>Kingdom:</strong> {self.kingdom}</p>
+                        <p><strong>Phylum:</strong> {self.phylum}</p>
+                        <p><strong>Class:</strong> {self.class_name}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        """
 
 
 class Database(models.Model):
