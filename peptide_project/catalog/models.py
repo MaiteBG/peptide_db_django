@@ -2,6 +2,7 @@ import requests
 from Bio import Entrez
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models import Q
 
 Entrez.email = "your.email@example.com"
 
@@ -113,16 +114,16 @@ class PeptideSequence(models.Model):
         refs = self.references.all()
 
         if spec == "all":
-            reference_str = ", ".join(
+            reference_str = "\n".join(
                 ref.__format__("all") for ref in refs) if refs.exists() else "Reference not provided"
             format_str = (
                 f"ID: {sequence_id}\n"
                 f"Sequence: {self.aa_seq}\n"
                 f"Sequence Length: {len(self.aa_seq)}\n"
                 f"Organism: {organism_str}\n"
-                f"References: {reference_str}\n"
+                f"References:\n{reference_str}\n"
                 f"UniProt code: {self.uniprot_code or 'UniProt code not available'}\n"
-                f"Date added: {self.date_added or 'Date not available'}"
+                f"Date added to peptide_db: {self.date_added or 'Date not available'}"
             )
         else:
             reference_str = ", ".join(ref.__format__() for ref in refs) if refs.exists() else "Reference not provided"
@@ -372,20 +373,22 @@ class Reference(models.Model):
     """
     Stores a scientific reference identifier (PMID, DOI, or other).
     """
-    doi = models.CharField(max_length=100, blank=True, null=True)
     database = models.ForeignKey('catalog.Database', null=True, blank=True, on_delete=models.SET_NULL)
     db_accession = models.CharField(max_length=100, blank=True, null=True)
 
-    def clean(self):
-        # Ensure at least doi or database is provided
-        if not self.doi and not self.database:
-            raise ValidationError('Either DOI or database must be provided.')
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['database', 'db_accession'],
+                name='unique_database_db_accession',
+                condition=Q(db_accession__isnull=False)  # Only if db_accession is null
+            )
+        ]
+        verbose_name = "Reference"
+        verbose_name_plural = "References"
 
-    def save(self, *args, **kwargs):
-        self.full_clean()  # Llama a clean() antes de guardar
-        super().save(*args, **kwargs)
-
-    def get_reference_info_from_doi(self) -> dict | None:
+    @staticmethod
+    def get_reference_info_from_doi(doi) -> dict | None:
         """
         Fetches bibliographic information for a given DOI using the CrossRef API.
 
@@ -396,7 +399,8 @@ class Reference(models.Model):
             dict | None: A dictionary with bibliographic info including title, authors,
                          journal, year, publisher, URL, etc. Returns None if not found.
         """
-        url = f"https://api.crossref.org/works/{self.doi}"
+
+        url = f"https://api.crossref.org/works/{doi}"
         try:
             response = requests.get(url)
             response.raise_for_status()
@@ -422,7 +426,7 @@ class Reference(models.Model):
                 "year": message.get("published-print", {}).get("date-parts", [[None]])[0][0] or
                         message.get("published-online", {}).get("date-parts", [[None]])[0][0],
                 "publisher": message.get("publisher"),
-                "doi": self.doi,
+                "doi": doi,
                 "url": message.get("URL"),
                 "type": message.get("type"),
             }
@@ -430,10 +434,10 @@ class Reference(models.Model):
             return result
 
         except requests.HTTPError as e:
-            print(f"HTTP error when fetching DOI {self.doi}: {e}")
+            print(f"HTTP error when fetching DOI {doi}: {e}")
             return None
         except Exception as e:
-            print(f"Error when fetching DOI {self.doi}: {e}")
+            print(f"Error when fetching DOI {doi}: {e}")
             return None
 
     # def get_reference_info_from_database(self):
@@ -447,7 +451,7 @@ class Reference(models.Model):
             str: The reference ID or a placeholder if not set.
         """
         # Prefer DOI, then db_accession, else placeholder
-        return self.doi or self.db_accession or "No reference ID"
+        return f"{self.database}: {self.db_accession or 'No reference ID'}"
 
     def __repr__(self):
         """
@@ -457,10 +461,9 @@ class Reference(models.Model):
         Returns:
             str: A formatted string showing key fields.
         """
-        doi_str = self.doi or "(no DOI)"
         db_name = f"{self.database.database_name} ({self.database.url_pattern.replace('{id}', self.db_accession)})" if self.database and self.database.url_pattern and self.db_accession else "(no database)"
         accession_str = self.db_accession or "(no accession)"
-        return f"<Reference(doi='{doi_str}', database='{db_name}', db_accession='{accession_str}')>"
+        return f"<Reference( database='{db_name}', db_accession='{accession_str}')>"
 
     def __format__(self, spec=None):
         """
@@ -474,22 +477,16 @@ class Reference(models.Model):
         Returns:
             str: Formatted string based on the spec.
         """
-        doi_str = self.doi or "(no DOI)"
+
         accession_str = self.db_accession or "(no accession)"
 
         if spec == "all":
-            db_name = f"{self.database.database_name} ({self.database.url_pattern.replace('{id}', self.db_accession)})" if self.database and self.database.url_pattern and self.db_accession else "(no database)"
-
 
             return (
-                f"Reference Details:\n"
-                f"  DOI: {doi_str}\n"
-                f"  Database: {db_name}\n"
-                f"  Accession: {accession_str}"
+                f"Database: {self.database.database_name}\n"
+                f"\tAccession: {accession_str}\n"
+                f"\tURL: {self.database.url_pattern.replace('{id}', self.db_accession)}\n"
             )
         else:
-            db_name = f"{self.database.database_name} ({self.database.url_pattern.replace('{id}', self.db_accession)})" if self.database and self.database.url_pattern and self.db_accession else "(no database)"
-
-
             # Brief single line summary
-            return f"Reference: {doi_str} ({db_name})"
+            return f"{self.database}: {self.db_accession or 'No reference ID'}"
