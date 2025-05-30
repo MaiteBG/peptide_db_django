@@ -167,9 +167,12 @@ class Organism(models.Model):
 
     scientific_name = models.CharField(max_length=50, primary_key=True)
     common_name = models.CharField(max_length=50, blank=True, null=True)
-    kingdom = models.CharField(max_length=50, blank=True, null=True)
-    phylum = models.CharField(max_length=50, blank=True, null=True)
-    class_name = models.CharField(max_length=50, blank=True, null=True)
+    kingdom = models.CharField(max_length=50, blank=True, null=True,
+                               help_text=("Taxonomic Kingdom"))
+    phylum = models.CharField(max_length=50, blank=True, null=True,
+                              help_text=("Taxonomic Phylum"))
+    class_name = models.CharField(max_length=50, blank=True, null=True,
+                                  help_text=("Taxonomic Class"))
     ncbi_url = models.URLField(max_length=120, blank=True, null=True)
 
     class Meta:
@@ -299,28 +302,6 @@ class Organism(models.Model):
             )
         else:
             return f"Organism: {sci_name} ({common})"
-
-    def formatted(self) -> str:
-        return f"""
-        <div class="organism-block">
-            <p><h3><em>{self.scientific_name}</em></h3> </p>
-            <hr>
-            <div class="organism-details">
-                <p><strong>Common Name:</strong> {self.common_name}</p>
-                <p><strong>NCBI URL:</strong> <a href="{self.ncbi_url}" target="_blank">{self.ncbi_url}</a></p>
-                <div>
-                    <button type="button" class="toggle-taxonomy" onclick="toggleTaxonomy(this)">
-                        Show Taxonomy Details
-                    </button>
-                    <div class="taxonomy-details" style="display:none;">
-                        <p><strong>Kingdom:</strong> {self.kingdom}</p>
-                        <p><strong>Phylum:</strong> {self.phylum}</p>
-                        <p><strong>Class:</strong> {self.class_name}</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-        """
 
 
 class Database(models.Model):
