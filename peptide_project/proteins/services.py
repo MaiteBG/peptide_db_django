@@ -1,7 +1,7 @@
 import re
 import requests
 from requests.adapters import HTTPAdapter, Retry
-from catalog.models import Organism, PeptideSequence
+from catalog.models import Organism, PeptideSequence, Database
 from proteins.models import Protein
 
 # -------------------------------------------------------------------
@@ -29,6 +29,31 @@ BASE_URL = (
 _re_next_link = re.compile(r'<(.+)>; rel="next"')
 
 
+def create_basic_database():
+    pubmed_db, _ = Database.objects.get_or_create(
+        database_name="PubMed",
+        url_pattern="https://pubmed.ncbi.nlm.nih.gov/{id}/"
+    )
+    doi_db, _ = Database.objects.get_or_create(
+        database_name="DOI",
+        url_pattern="https://doi.org/{id}"
+    )
+    swissprot_db, _ = Database.objects.get_or_create(
+        database_name="UniProt Swiss-Prot",
+        url_pattern="https://www.uniprot.org/uniprot/{id}"
+    )
+    trembl_db, _ = Database.objects.get_or_create(
+        database_name="UniProt TrEMBL",
+        url_pattern="https://www.uniprot.org/uniprot/{id}"
+    )
+    embl_db, _ = Database.objects.get_or_create(
+        database_name="EMBL",
+        url_pattern="https://www.ebi.ac.uk/ena/browser/view/{id}"
+    )
+
+
+
+
 def _get_next_link(headers: dict) -> str | None:
     """
     Extracts the 'next' pagination link from the response headers.
@@ -44,7 +69,6 @@ def _get_next_link(headers: dict) -> str | None:
         if match:
             return match.group(1)
     return None
-
 
 def _get_batches(initial_url: str):
     """
@@ -63,7 +87,6 @@ def _get_batches(initial_url: str):
         total = response.headers.get("x-total-results", "?")
         yield response, total
         batch_url = _get_next_link(response.headers)
-
 
 def get_proteins_from_organism(organism: Organism) -> list[str]:
     """
@@ -87,23 +110,21 @@ def get_proteins_from_organism(organism: Organism) -> list[str]:
     print(f"Finished fetching proteins for {organism.scientific_name}. Total: {len(accns)}")
     return accns
 
-
 def get_protein_metadata(accessions: list[str]) -> list[dict]:
     """
     Retrieves metadata for a list of UniProt protein accessions.
 
     Args:
         accessions (list[str]): A list of UniProt accession IDs.
-        source (str, optional): Source tissue or other descriptor to add in each metadata dict.
 
     Returns:
-        list[dict]: A list of dictionaries containing protein metadata.
+        list[dict]: A list of dictionaries containing protein metadata, including citationCrossReferences.
     """
     results = []
     batch_size = 100  # Avoid overly long queries
 
-    for i in range(0, len(accessions), batch_size):
-        batch = accessions[i:i + batch_size]
+    for acc in range(0, len(accessions), batch_size):
+        batch = accessions[acc:acc + batch_size]
         query = " OR ".join([f"accession:{acc}" for acc in batch])
         url = UNIPROT_BASE_URL.format(query=query)
 
@@ -133,16 +154,28 @@ def get_protein_metadata(accessions: list[str]) -> list[dict]:
 
             sequence = entry.get("sequence", {}).get("value")
 
+            # 🆕 Extraer todos los citationCrossReferences
+            references = entry.get("references", [])
+            all_cross_refs = [{'database': "UniProt Swiss-Prot", 'id': acc}]
+            for ref in references:
+                citation = ref.get("citation", {})
+                cross_refs = citation.get("citationCrossReferences", [])
+                if cross_refs:
+                    all_cross_refs.extend(cross_refs)
+
+            all_cross_refs.extend(entry.get("uniProtKBCrossReferences", []))
+
+
             results.append({
                 "accession": acc,
                 "protein_name": protein_name,
                 "gene_name": gene_name,
                 "protein_function": function,
                 "sequence": sequence,
+                "references": all_cross_refs,
             })
 
     return results
-
 
 def create_proteins_from_metadata(proteins_metadata: list[dict], organism=None, reference=None):
     """
@@ -167,13 +200,10 @@ def create_proteins_from_metadata(proteins_metadata: list[dict], organism=None, 
         # Get or create peptide sequence
         sequence_obj, _ = PeptideSequence.objects.get_or_create(
             aa_seq=seq_str,
-            defaults={
-                "organism": organism,
-                "reference": reference,
-                "uniprot_code": meta.get("accession"),
-                "is_reviewed": True,
-            }
         )
+
+        references = meta.get("references")
+        sequence_obj.add_references(references)
 
         # Create protein instance
         protein = Protein.objects.get_or_create(
@@ -181,6 +211,8 @@ def create_proteins_from_metadata(proteins_metadata: list[dict], organism=None, 
             protein_name=meta.get("protein_name"),
             gene_name=meta.get("gene_name"),
             protein_function=meta.get("protein_function"),
+            organism=organism,
+            uniprot_code=meta.get("accession"),
         )
         created_proteins.append(protein)
 

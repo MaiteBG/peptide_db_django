@@ -22,20 +22,13 @@ class PeptideSequence(models.Model):
     """
 
     aa_seq = models.TextField()
-    organism = models.ForeignKey(
-        'catalog.Organism', null=True, blank=True, on_delete=models.SET_NULL
-    )
-    references = models.ManyToManyField(
-        'catalog.Reference', related_name='proteins'
-    )
-    uniprot_code = models.CharField(max_length=10, null=True, blank=True)
-    date_added = models.DateField(auto_now_add=True)
+    references = models.ManyToManyField('catalog.Reference', related_name='references')
 
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=['aa_seq', 'organism'],
-                name='unique_peptideseq_org'
+                fields=['aa_seq'],
+                name='unique_peptideseq'
             )
         ]
         verbose_name = "Peptide Sequence"
@@ -83,7 +76,6 @@ class PeptideSequence(models.Model):
         """
         id_part = f"id={self.id}" if self.id else "unsaved"
         aa_seq_preview = self.get_seq_preview()
-        organism = self.organism.scientific_name if self.organism else "No organism specified"
         refs = self.references.all()
         if refs.exists():
             ref_list = ", ".join(ref.__repr__() for ref in refs[:2])
@@ -91,8 +83,7 @@ class PeptideSequence(models.Model):
             ref_list = "No references provided"
 
         return (
-            f"<PeptideSequence({id_part}, aa_seq='{aa_seq_preview}', "
-            f"organism='{organism}', references='{ref_list}')>"
+            f"<PeptideSequence({id_part}, aa_seq='{aa_seq_preview}', references='{ref_list}')>"
         )
 
     def __format__(self, spec=None):
@@ -110,7 +101,6 @@ class PeptideSequence(models.Model):
         """
         sequence_id = f"{self.id}" if self.id else "(unsaved)"
         seq_preview = self.get_seq_preview()
-        organism_str = self.organism.scientific_name if self.organism else "Organism not specified"
         refs = self.references.all()
 
         if spec == "all":
@@ -120,42 +110,40 @@ class PeptideSequence(models.Model):
                 f"ID: {sequence_id}\n"
                 f"Sequence: {self.aa_seq}\n"
                 f"Sequence Length: {len(self.aa_seq)}\n"
-                f"Organism: {organism_str}\n"
                 f"References:\n{reference_str}\n"
-                f"UniProt code: {self.uniprot_code or 'UniProt code not available'}\n"
-                f"Date added to peptide_db: {self.date_added or 'Date not available'}"
             )
         else:
             reference_str = ", ".join(ref.__format__() for ref in refs) if refs.exists() else "Reference not provided"
             format_str = (
-                f"PeptideSequence #{sequence_id}: {seq_preview} "
-                f"from {organism_str} | Length: {len(self.aa_seq)} | (Refs: {reference_str}) "
+                f"PeptideSequence #{sequence_id}: {seq_preview} | Length: {len(self.aa_seq)} | (Refs: {reference_str}) "
             )
 
         return format_str
 
-    def add_reference(self, reference):
-        """
-        Adds a Reference instance to this PeptideSequence's references if it
-        does not already exist. Also validates that the organism associated
-        with the peptide sequence and the reference match (if both are set).
+    def add_references(self, references):
+        replacements = {
+            # to add replacements
+        }
 
-        Args:
-            reference (Reference): Reference instance to add.
+        for ref in references:
+            db_name = ref.get("database")
+            db_name = replacements.get(db_name, db_name)
+            external_id = ref.get("id")
+            if not db_name or not external_id:
+                continue  # skip invalid ref
 
-        Raises:
-            ValueError: If the organisms of the sequence and reference do not match.
-        """
-        # Validate organism match if both organisms exist
-        if self.organism and hasattr(reference, 'organism') and reference.organism:
-            if self.organism != reference.organism:
-                raise ValueError(
-                    "The organism of the peptide sequence and the reference do not match."
+            try:
+                database = Database.objects.get(pk=db_name)
+
+                reference, was_created = Reference.objects.get_or_create(
+                    database=database,
+                    db_accession=external_id
                 )
+                self.references.add(reference)
 
-        # Add reference only if not already associated
-        if not self.references.filter(pk=reference.pk).exists():
-            self.references.add(reference)
+            except Database.DoesNotExist:
+                # print(f"La base de datos '{db_name}' no existe.")
+                continue
 
 
 # --- Organism Model ---
@@ -235,7 +223,6 @@ class Organism(models.Model):
             _, scientific_name = next(iter(kwargs.items()))
             try:
                 data = Organism._find_organism_data(scientific_name)
-                print(data)
                 organism, created = Organism.objects.get_or_create(scientific_name=data["scientific_name"],
                                                                    defaults=data)
                 return organism, created
