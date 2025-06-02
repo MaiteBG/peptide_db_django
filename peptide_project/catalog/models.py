@@ -5,6 +5,7 @@ from Bio import Entrez
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
+from django.utils.text import slugify
 
 Entrez.email = "your.email@example.com"
 
@@ -171,9 +172,15 @@ class Organism(models.Model):
                                   help_text=("Taxonomic Class"))
     ncbi_url = models.URLField(max_length=120, blank=True, null=True)
 
+    slug = models.SlugField(max_length=255, unique=True, blank=True)
+
     class Meta:
         verbose_name = "Organism"
         verbose_name_plural = "Organisms"
+
+    @property
+    def slug(self):
+        return slugify(self.scientific_name)
 
     @staticmethod
     def get_organism_NCBI_id(scientific_name):
@@ -205,7 +212,7 @@ class Organism(models.Model):
         if not organism_ids:
             raise ValueError("La lista de organism_ids no puede estar vacía.")
 
-        organism_query = "+OR+".join(f"organism_id:{oid}" for oid in organism_ids)
+        organism_query = "+OR+".join(f"taxonomy_id:{oid}" for oid in organism_ids)
         full_query = f"reviewed:true+AND+({organism_query})"
         base_url = "https://rest.uniprot.org/uniprotkb/search"
 

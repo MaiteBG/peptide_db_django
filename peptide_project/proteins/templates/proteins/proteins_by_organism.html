@@ -4,13 +4,21 @@
 {% block content %}
 <h1>Proteins for {{ organism.scientific_name }}</h1>
 
-{% if proteins %}
-<ul>
-    {% for protein in proteins %}
-    <li>{{ protein.accession }} - {{ protein.name }}</li>
-    {% endfor %}
-</ul>
-{% else %}
-<p>No proteins found for this organism.</p>
-{% endif %}
+<div class="organism-container">
+  {% for protein in proteins %}
+  <div class="organism-card">
+    <h3>{{ protein.protein_name|default:"No name" }}</h3>
+    <p class="organism-details"><strong>Gene Name:</strong> {{ protein.gene_name|default:"-" }}</p>
+    <p class="organism-details"><strong>Function:</strong> {{ protein.protein_function|default:"No description
+      available" }}</p>
+    <p class="organism-details"><strong>Organism:</strong> {{ protein.organism.scientific_name }}</p>
+    <p class="organism-details"><strong>UniProt Code:</strong> {{ protein.uniprot_code|default:"N/A" }}</p>
+    <p class="organism-details"><strong>References:</strong> {{ protein.sequence.references|default:"N/A" }}</p>
+  </div>
+  {% empty %}
+  <p class="no-results">No proteins found.</p>
+  {% endfor %}
+</div>
+
+
 {% endblock %}
