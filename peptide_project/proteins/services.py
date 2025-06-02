@@ -1,7 +1,7 @@
 import re
 import requests
 from requests.adapters import HTTPAdapter, Retry
-from catalog.models import Organism, PeptideSequence
+from catalog.models import Organism, PeptideSequence, Database
 from proteins.models import Protein
 
 # -------------------------------------------------------------------
@@ -19,14 +19,34 @@ UNIPROT_BASE_URL = (
     "https://rest.uniprot.org/uniprotkb/search?query={query}&format=json&size=100"
 )
 
-# Template to fetch reviewed protein accessions by organism name
-BASE_URL = (
-    "https://rest.uniprot.org/uniprotkb/search?"
-    "query=reviewed:true+AND+organism_name:{}&size=500&format=list"
-)
 
 # Regular expression for extracting the next page link from HTTP headers
 _re_next_link = re.compile(r'<(.+)>; rel="next"')
+
+
+def create_basic_database():
+    pubmed_db, _ = Database.objects.get_or_create(
+        database_name="PubMed",
+        url_pattern="https://pubmed.ncbi.nlm.nih.gov/{id}/"
+    )
+    doi_db, _ = Database.objects.get_or_create(
+        database_name="DOI",
+        url_pattern="https://doi.org/{id}"
+    )
+    swissprot_db, _ = Database.objects.get_or_create(
+        database_name="UniProt Swiss-Prot",
+        url_pattern="https://www.uniprot.org/uniprot/{id}"
+    )
+    trembl_db, _ = Database.objects.get_or_create(
+        database_name="UniProt TrEMBL",
+        url_pattern="https://www.uniprot.org/uniprot/{id}"
+    )
+    embl_db, _ = Database.objects.get_or_create(
+        database_name="EMBL",
+        url_pattern="https://www.ebi.ac.uk/ena/browser/view/{id}"
+    )
+
+
 
 
 def _get_next_link(headers: dict) -> str | None:
@@ -44,7 +64,6 @@ def _get_next_link(headers: dict) -> str | None:
         if match:
             return match.group(1)
     return None
-
 
 def _get_batches(initial_url: str):
     """
@@ -77,7 +96,9 @@ def get_proteins_from_organism(organism: Organism) -> list[str]:
     """
     print(f"Fetching proteins for organism: {organism.scientific_name}")
     accns = []
-    search_url = BASE_URL.format(organism.scientific_name)
+
+    organism_ids = Organism.get_organism_NCBI_id(organism.scientific_name)
+    search_url = Organism.build_uniprot_url_from_organism_ids(organism_ids)
 
     for batch, total in _get_batches(search_url):
         lines = batch.text.strip().splitlines()
@@ -88,25 +109,44 @@ def get_proteins_from_organism(organism: Organism) -> list[str]:
     return accns
 
 
+def extract_gene_name(gene_entry):
+    """
+    Extracts the most appropriate gene name from a dictionary.
+    Priority: geneName > synonyms > orfNames
+    """
+    for key in gene_entry.keys():  # usually only 'geneName', but sometimes only have 'orfNames'
+        if key in gene_entry:
+            value = gene_entry[key]
+            # Case 1: dict with 'value'
+            if isinstance(value, dict) and 'value' in value:
+                return value['value']
+            # Case 2: list of dicts with 'value'
+            elif isinstance(value, list):
+                for item in value:
+                    if isinstance(item, dict) and 'value' in item:
+                        return item['value']
+            # Case 3: plain string
+            elif isinstance(value, str):
+                return value
+    return None  # No name found
+
+
 def get_protein_metadata(accessions: list[str]) -> list[dict]:
     """
     Retrieves metadata for a list of UniProt protein accessions.
 
     Args:
         accessions (list[str]): A list of UniProt accession IDs.
-        source (str, optional): Source tissue or other descriptor to add in each metadata dict.
 
     Returns:
-        list[dict]: A list of dictionaries containing protein metadata.
+        list[dict]: A list of dictionaries containing protein metadata, including citationCrossReferences.
     """
     results = []
     batch_size = 100  # Avoid overly long queries
-
-    for i in range(0, len(accessions), batch_size):
-        batch = accessions[i:i + batch_size]
+    for acc in range(0, len(accessions), batch_size):
+        batch = accessions[acc:acc + batch_size]
         query = " OR ".join([f"accession:{acc}" for acc in batch])
         url = UNIPROT_BASE_URL.format(query=query)
-
         response = _session.get(url)
         response.raise_for_status()
         data = response.json()
@@ -120,8 +160,7 @@ def get_protein_metadata(accessions: list[str]) -> list[dict]:
                 .get("value")
             )
             gene_names = entry.get("genes", [])
-            gene_name = gene_names[0]["geneName"]["value"] if gene_names else None
-
+            gene_name = extract_gene_name(gene_names[0]) if gene_names else None
             comments = entry.get("comments", [])
             function = None
             for comment in comments:
@@ -133,16 +172,28 @@ def get_protein_metadata(accessions: list[str]) -> list[dict]:
 
             sequence = entry.get("sequence", {}).get("value")
 
+            # 🆕 Extraer todos los citationCrossReferences
+            references = entry.get("references", [])
+            all_cross_refs = [{'database': "UniProt Swiss-Prot", 'id': acc}]
+            for ref in references:
+                citation = ref.get("citation", {})
+                cross_refs = citation.get("citationCrossReferences", [])
+                if cross_refs:
+                    all_cross_refs.extend(cross_refs)
+
+            all_cross_refs.extend(entry.get("uniProtKBCrossReferences", []))
+
+
             results.append({
                 "accession": acc,
                 "protein_name": protein_name,
                 "gene_name": gene_name,
                 "protein_function": function,
                 "sequence": sequence,
+                "references": all_cross_refs,
             })
 
     return results
-
 
 def create_proteins_from_metadata(proteins_metadata: list[dict], organism=None, reference=None):
     """
@@ -167,21 +218,23 @@ def create_proteins_from_metadata(proteins_metadata: list[dict], organism=None, 
         # Get or create peptide sequence
         sequence_obj, _ = PeptideSequence.objects.get_or_create(
             aa_seq=seq_str,
-            defaults={
-                "organism": organism,
-                "reference": reference,
-                "uniprot_code": meta.get("accession"),
-                "is_reviewed": True,
-            }
         )
 
+        references = meta.get("references")
+        sequence_obj.add_references(references)
+
         # Create protein instance
-        protein = Protein.objects.get_or_create(
-            sequence=sequence_obj,
-            protein_name=meta.get("protein_name"),
-            gene_name=meta.get("gene_name"),
-            protein_function=meta.get("protein_function"),
-        )
-        created_proteins.append(protein)
+        try:
+            protein = Protein.objects.get_or_create(
+                sequence=sequence_obj,
+                protein_name=meta.get("protein_name"),
+                gene_name=meta.get("gene_name"),
+                protein_function=meta.get("protein_function"),
+                organism=organism,
+                uniprot_code=meta.get("accession"),
+            )
+            created_proteins.append(protein)
+        except Exception as e:
+            print(e)
 
     return created_proteins

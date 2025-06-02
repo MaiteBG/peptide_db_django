@@ -11,16 +11,20 @@ class Protein(models.Model):
     Protein model referencing the peptide sequence and additional protein-specific info.
     """
 
-    sequence = models.ForeignKey(PeptideSequence, on_delete=models.CASCADE, related_name='proteins')
+    sequence = models.ForeignKey(PeptideSequence, on_delete=models.CASCADE)
     protein_name = models.CharField(max_length=150, blank=True, null=True)
     gene_name = models.CharField(max_length=100, blank=True, null=True)
     protein_function = models.TextField(blank=True, null=True)
+    organism = models.ForeignKey(
+        'catalog.Organism', null=True, blank=True, on_delete=models.SET_NULL
+    )
+    uniprot_code = models.CharField(max_length=10, null=True, blank=True)
 
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=['sequence', 'gene_name', 'protein_name'],
-                name='unique_protein_by_sequence_gene_name_and_name'
+                fields=['sequence', 'gene_name', 'protein_name', 'organism'],
+                name='unique_protein_name_gene_organism'
             )
         ]
         verbose_name = "Protein"
@@ -53,13 +57,13 @@ class Protein(models.Model):
         id_part = f"id={self.id}" if self.id else "unsaved"
         protein_name = self.protein_name or "Unnamed protein"
         gene_name = self.gene_name or "No gene name"
-        organism = getattr(self.sequence.organism, "scientific_name", "No organism") if self.sequence else "No organism"
-        uniprot_code = self.sequence.uniprot_code or "No UniProt code" if self.sequence else "No UniProt code"
+        organism = getattr(self.organism, "scientific_name", "No organism") if self.organism else "No organism"
+        uniprot_code = self.uniprot_code or "No UniProt code" if self.uniprot_code else "No UniProt code"
 
         return (f"<Protein({id_part}, name='{protein_name}', gene='{gene_name}', "
                 f"organism='{organism}', UniProt='{uniprot_code}')>")
 
-    def __format__(self, spec=None):
+    def __format__(self, spec=""):
         """
         Returns a custom formatted string representation of the protein.
 
@@ -75,8 +79,8 @@ class Protein(models.Model):
         id_part = f"{self.id}" if self.id else "(unsaved)"
         protein_name = self.protein_name or "Unnamed protein"
         gene_name = self.gene_name or "No gene name"
-        organism = getattr(self.sequence.organism, "scientific_name", "No organism") if self.sequence else "No organism"
-        uniprot_code = self.sequence.uniprot_code or "No UniProt code" if self.sequence else "No UniProt code"
+        organism = getattr(self.organism, "scientific_name", "No organism")
+        uniprot_code = self.uniprot_code or "No UniProt code"
         seq_format = format(self.sequence, spec) if self.sequence else "(No sequence)"
 
         if spec == "all":
@@ -86,8 +90,7 @@ class Protein(models.Model):
                 f"Gene Name: {gene_name}\n"
                 f"Organism: {organism}\n"
                 f"UniProt Code: {uniprot_code}\n"
-                f"Sequence: {self.sequence.aa_seq if self.sequence else 'N/A'}\n"
-                f"Protein Function: {self.protein_function or 'N/A'}\n"
+                f"Sequence: {seq_format}\n"
             )
         else:
             format_str = (
