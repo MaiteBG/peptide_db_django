@@ -1,3 +1,5 @@
+import hashlib
+
 import requests
 from Bio import Entrez
 from django.core.exceptions import ValidationError
@@ -22,17 +24,23 @@ class PeptideSequence(models.Model):
     """
 
     aa_seq = models.TextField()
+    peptideseq_hash = models.CharField(max_length=32, unique=True, editable=False)
     references = models.ManyToManyField('catalog.Reference', related_name='references')
 
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=['aa_seq'],
+                fields=['peptideseq_hash'],
                 name='unique_peptideseq'
             )
         ]
         verbose_name = "Peptide Sequence"
         verbose_name_plural = "Peptide Sequences"
+
+    def save(self, *args, **kwargs):
+        if self.aa_seq:
+            self.peptideseq_hash = hashlib.md5(self.aa_seq.encode("utf-8")).hexdigest()
+        super().save(*args, **kwargs)
 
     def get_seq_preview(self, max_length=30):
         """
@@ -168,7 +176,43 @@ class Organism(models.Model):
         verbose_name_plural = "Organisms"
 
     @staticmethod
-    def _find_organism_data(scientific_name: str) -> dict:
+    def get_organism_NCBI_id(scientific_name):
+        # Search taxonomy database for the scientific name
+        try:
+            with Entrez.esearch(db="taxonomy", term=scientific_name) as handle:
+                record = Entrez.read(handle)
+            id_list = record.get("IdList", [])
+            # If no IDs returned, organism does not exist in NCBI
+            if not id_list:
+                raise ValueError(f"No organism found for '{scientific_name}'")
+            return id_list
+        except Exception:
+            raise ValueError(f"Error searching organism '{scientific_name}'")
+
+    @staticmethod
+    def build_uniprot_url_from_organism_ids(organism_ids, size=500, format="list"):
+        """
+        Construye una URL de búsqueda para UniProt con múltiples organism_id.
+
+        Args:
+            organism_ids (list of int): Lista de NCBI Taxonomy IDs.
+            size (int): Número de resultados por página (máx 500).
+            format (str): Formato de salida (ej. "list", "json", etc.)
+
+        Returns:
+            str: URL completa para hacer la petición.
+        """
+        if not organism_ids:
+            raise ValueError("La lista de organism_ids no puede estar vacía.")
+
+        organism_query = "+OR+".join(f"organism_id:{oid}" for oid in organism_ids)
+        full_query = f"reviewed:true+AND+({organism_query})"
+        base_url = "https://rest.uniprot.org/uniprotkb/search"
+
+        return f"{base_url}?query={full_query}&size={size}&format={format}"
+
+    @classmethod
+    def _find_organism_data(cls, scientific_name: str) -> dict:
         """
         Queries the NCBI Taxonomy database to find detailed information
         about an organism given its scientific name.
@@ -183,14 +227,8 @@ class Organism(models.Model):
         Raises:
             ValueError: If no organism or exact match is found for the given name.
         """
-        # Search taxonomy database for the scientific name
-        with Entrez.esearch(db="taxonomy", term=scientific_name) as handle:
-            record = Entrez.read(handle)
-        id_list = record.get("IdList", [])
 
-        # If no IDs returned, organism does not exist in NCBI
-        if not id_list:
-            raise ValueError(f"No organism found for '{scientific_name}'")
+        id_list = cls.get_organism_NCBI_id(scientific_name)
 
         # For each tax_id found, fetch detailed taxonomy record
         for tax_id in id_list:

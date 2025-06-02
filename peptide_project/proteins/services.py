@@ -19,11 +19,6 @@ UNIPROT_BASE_URL = (
     "https://rest.uniprot.org/uniprotkb/search?query={query}&format=json&size=100"
 )
 
-# Template to fetch reviewed protein accessions by organism name
-BASE_URL = (
-    "https://rest.uniprot.org/uniprotkb/search?"
-    "query=reviewed:true+AND+organism_name:{}&size=500&format=list"
-)
 
 # Regular expression for extracting the next page link from HTTP headers
 _re_next_link = re.compile(r'<(.+)>; rel="next"')
@@ -88,6 +83,7 @@ def _get_batches(initial_url: str):
         yield response, total
         batch_url = _get_next_link(response.headers)
 
+
 def get_proteins_from_organism(organism: Organism) -> list[str]:
     """
     Retrieves a list of reviewed UniProt protein accessions for a given organism.
@@ -100,7 +96,9 @@ def get_proteins_from_organism(organism: Organism) -> list[str]:
     """
     print(f"Fetching proteins for organism: {organism.scientific_name}")
     accns = []
-    search_url = BASE_URL.format(organism.scientific_name)
+
+    organism_ids = Organism.get_organism_NCBI_id(organism.scientific_name)
+    search_url = Organism.build_uniprot_url_from_organism_ids(organism_ids)
 
     for batch, total in _get_batches(search_url):
         lines = batch.text.strip().splitlines()
@@ -206,14 +204,17 @@ def create_proteins_from_metadata(proteins_metadata: list[dict], organism=None, 
         sequence_obj.add_references(references)
 
         # Create protein instance
-        protein = Protein.objects.get_or_create(
-            sequence=sequence_obj,
-            protein_name=meta.get("protein_name"),
-            gene_name=meta.get("gene_name"),
-            protein_function=meta.get("protein_function"),
-            organism=organism,
-            uniprot_code=meta.get("accession"),
-        )
-        created_proteins.append(protein)
+        try:
+            protein = Protein.objects.get_or_create(
+                sequence=sequence_obj,
+                protein_name=meta.get("protein_name"),
+                gene_name=meta.get("gene_name"),
+                protein_function=meta.get("protein_function"),
+                organism=organism,
+                uniprot_code=meta.get("accession"),
+            )
+            created_proteins.append(protein)
+        except Exception as e:
+            print(e)
 
     return created_proteins

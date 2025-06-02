@@ -23,8 +23,8 @@ class Protein(models.Model):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=['sequence', 'gene_name', 'protein_name'],
-                name='unique_protein_by_sequence_gene_name_and_name'
+                fields=['sequence', 'gene_name', 'protein_name', 'organism'],
+                name='unique_protein_name_gene_organism'
             )
         ]
         verbose_name = "Protein"
