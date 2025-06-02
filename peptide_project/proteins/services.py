@@ -108,6 +108,29 @@ def get_proteins_from_organism(organism: Organism) -> list[str]:
     print(f"Finished fetching proteins for {organism.scientific_name}. Total: {len(accns)}")
     return accns
 
+
+def extract_gene_name(gene_entry):
+    """
+    Extracts the most appropriate gene name from a dictionary.
+    Priority: geneName > synonyms > orfNames
+    """
+    for key in gene_entry.keys():  # usually only 'geneName', but sometimes only have 'orfNames'
+        if key in gene_entry:
+            value = gene_entry[key]
+            # Case 1: dict with 'value'
+            if isinstance(value, dict) and 'value' in value:
+                return value['value']
+            # Case 2: list of dicts with 'value'
+            elif isinstance(value, list):
+                for item in value:
+                    if isinstance(item, dict) and 'value' in item:
+                        return item['value']
+            # Case 3: plain string
+            elif isinstance(value, str):
+                return value
+    return None  # No name found
+
+
 def get_protein_metadata(accessions: list[str]) -> list[dict]:
     """
     Retrieves metadata for a list of UniProt protein accessions.
@@ -120,12 +143,10 @@ def get_protein_metadata(accessions: list[str]) -> list[dict]:
     """
     results = []
     batch_size = 100  # Avoid overly long queries
-
     for acc in range(0, len(accessions), batch_size):
         batch = accessions[acc:acc + batch_size]
         query = " OR ".join([f"accession:{acc}" for acc in batch])
         url = UNIPROT_BASE_URL.format(query=query)
-
         response = _session.get(url)
         response.raise_for_status()
         data = response.json()
@@ -139,8 +160,7 @@ def get_protein_metadata(accessions: list[str]) -> list[dict]:
                 .get("value")
             )
             gene_names = entry.get("genes", [])
-            gene_name = gene_names[0]["geneName"]["value"] if gene_names else None
-
+            gene_name = extract_gene_name(gene_names[0]) if gene_names else None
             comments = entry.get("comments", [])
             function = None
             for comment in comments:

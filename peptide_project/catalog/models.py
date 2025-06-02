@@ -244,7 +244,12 @@ class Organism(models.Model):
 
             # Check for exact scientific name match in returned records
             for rec in records:
-                if rec["ScientificName"].lower() == scientific_name.lower():
+                # Obtain synonym names
+                synonyms = rec.get("OtherNames", {}).get("Synonym", [])
+                synonyms_lower = [s.lower() for s in synonyms]
+
+                if (rec["ScientificName"].lower() == scientific_name.lower()
+                        or scientific_name.lower() in synonyms_lower):  # or synonym
                     # Build lineage dictionary: rank -> scientific name
                     lineage = {item["Rank"]: item["ScientificName"] for item in rec.get("LineageEx", [])}
 
@@ -272,7 +277,7 @@ class Organism(models.Model):
                                                                    defaults=data)
                 return organism, created
             except ValueError as e:
-                raise ValueError(f"No se pudo crear el organismo desde '{scientific_name}': {e}")
+                raise ValueError(f"{e}")
 
         # Caso general: usar get_or_create con lo que se pasa
         organism, created = Organism.objects.get_or_create(**kwargs)

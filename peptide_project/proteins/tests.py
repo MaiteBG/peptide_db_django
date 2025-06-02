@@ -1,8 +1,8 @@
 from django.test import TestCase
 import os
 import django
-
-from proteins.models import Protein
+import logging as log
+from logs.logger_base import setup_logger
 from proteins.services import get_proteins_from_organism, get_protein_metadata, create_proteins_from_metadata, \
     create_basic_database
 
@@ -11,6 +11,8 @@ django.setup()
 
 from catalog.models import Organism, Reference, Database, PeptideSequence
 
+setup_logger("test.py")
+
 create_basic_database()
 
 
@@ -18,14 +20,25 @@ create_basic_database()
 
 def test_func():
     ini_organisms = ["Allium", "Apium graveolens", "Beta vulgaris", "Brassica rapa", "Bos taurus"]
-    # ini_organisms= [ "Capsicum", "Carassius", "Castanea sativa", "Ceratonia siliqua", "Cichorum intybus", "Citrus", "Corylus avellana", "Ctenopharyngodon", "Cucumis melo", "Cucumis sativus", "Cucurbita", "Cynara cardunculus",  "Euphasia","Foeniculum vulgare", "Fragaria ananassa", "Gadus"]
-    # ini_organisms= [ "Gallus gallus", "Hypophthalmichthys", "Labeo", "Lactuca sativa", "Litopenaeus", "Malus domestica", "Meleagris gallopavo", "Olea europea", "Oncorhynchus", "Oreochromis"]
-    # ini_organisms= [ "Oryctolagus cuniculus", "Ovis aries", "Pandalus", "Patinopecten", "Penaeus", "Petroselinum crispum", "Phaseolus vulgaris", "Pisum sativum", "Portunus", "Procambarus", "Prunus", "Punica granatum", "Pyrus", "Raphanus sativus", "Rubus idaeus","Sardina", "Solanum lycopersicum", "Solanum melongena"]
+    ini_organisms += ["Capsicum", "Carassius", "Castanea sativa", "Ceratonia siliqua"]
+    ini_organisms += ["Cichorium intybus", "Citrus", "Corylus avellana", "Ctenopharyngodon", "Cucumis melo",
+                      "Cucumis sativus", "Cucurbita", "Cynara cardunculus", "Euphausia", ]
+    ini_organisms += ["Foeniculum vulgare", "Fragaria ananassa", "Gadus"]
+    ini_organisms += ["Gallus gallus", "Hypophthalmichthys", "Labeo", "Lactuca sativa", "Litopenaeus",
+                      "Malus domestica", "Meleagris gallopavo"]
+    ini_organisms += ["Olea europaea", "Oncorhynchus", "Oreochromis"]
+    ini_organisms += ["Oryctolagus cuniculus", "Ovis aries", "Pandalus", "Patinopecten", "Penaeus",
+                      "Petroselinum crispum", "Phaseolus vulgaris", "Pisum sativum", "Portunus", "Procambarus",
+                      "Prunus", "Punica granatum", "Pyrus", "Raphanus sativus", "Rubus idaeus", "Sardina",
+                      "Solanum lycopersicum", "Solanum melongena"]
+    ini_organisms += ["Tenebrio molitor"]
+
     for organism_name in ini_organisms:
         organism, _ = Organism.get_or_create_organism(scientific_name=organism_name)
         proteins = get_proteins_from_organism(organism)
         proteins_meta = get_protein_metadata(proteins)
         created_proteins = create_proteins_from_metadata(proteins_meta, organism)
+        log.debug(f"{organism_name} feched")
         # item, _ = created_proteins[0]
         # print(item)
         # print(item.__repr__())
