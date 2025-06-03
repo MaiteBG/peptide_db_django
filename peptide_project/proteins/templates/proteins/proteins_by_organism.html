@@ -1,6 +1,11 @@
 <!-- templates/proteins/proteins_by_organism.html -->
 {% extends "catalog/base.html" %}
 
+
+<style>
+  .toggle-link { margin-left: 8px; font-weight: 600; cursor: pointer; }
+</style>
+
 {% block content %}
 <h1>Proteins for {{ organism.scientific_name }}</h1>
 
@@ -9,12 +14,44 @@
   <div class="organism-card">
     <h3>{{ protein.protein_name|default:"No name" }}</h3>
     <p class="organism-details"><strong>Gene Name:</strong> {{ protein.gene_name|default:"-" }}</p>
-    <p class="organism-details"><strong>Function:</strong> {{ protein.protein_function|default:"No description
-      available" }}</p>
     <p class="organism-details"><strong>Organism:</strong> {{ protein.organism.scientific_name }}</p>
-    <p class="organism-details"><strong>UniProt Code:</strong> {{ protein.uniprot_code|default:"N/A" }}</p>
-    <p class="organism-details"><strong>References:</strong> {{ protein.sequence.references|default:"N/A" }}</p>
+    <p class="organism-details">
+      <strong>Function:</strong><br>
+      <span class="text-preview function" id="function-preview-{{ protein.id }}">
+    {{ protein.protein_function|default:"No description available" }}
+  </span>
+      {% if protein.protein_function and protein.protein_function|length > 50 %}
+      <a href="javascript:void(0);"
+         class="toggle-link"
+         id="toggle-link-{{ protein.id }}"
+         onclick="toggleText({{ protein.id }})">
+        Show more
+      </a>
+      {% endif %}
+    </p>
+
+    <p class="organism-details">
+      <strong>References:</strong> <br>
+      <span class="text-preview"
+            id="reference-preview-{{ protein.id }}"
+            data-full="{{ protein.references_text }}"
+            data-truncated="{{ protein.references_text_trunc }}">
+    {{ protein.references_text_trunc }}
+  </span>
+
+      {% if protein.references_text|length > 50 %}
+      <a href="javascript:void(0);"
+         class="toggle-link"
+         id="toggle-ref-{{ protein.id }}"
+         onclick="toggleRef({{ protein.id }})">
+        Show more
+      </a>
+      {% endif %}
+    </p>
+
+
   </div>
+
   {% empty %}
   <p class="no-results">No proteins found.</p>
   {% endfor %}

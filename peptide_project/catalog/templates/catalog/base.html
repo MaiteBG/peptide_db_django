@@ -39,4 +39,63 @@
 
 </script>
 
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+      // Para función (texto simple)
+      document.querySelectorAll(".text-preview.function").forEach(span => {
+        const full = span.textContent.trim();
+        if (full.length > 50) {
+          span.dataset.full = full;
+          span.dataset.truncated = full.slice(0, 50) + "…";
+          span.textContent = span.dataset.truncated;
+          span.dataset.expanded = "false";
+        }
+      });
+
+      // Para referencias (texto plano con saltos de línea)
+      document.querySelectorAll(".text-preview.references").forEach(span => {
+        const full = span.textContent.trim();
+        if (full.length > 50) {
+          span.dataset.full = full;
+          span.dataset.truncated = full.slice(0, 50) + "…";
+          span.textContent = span.dataset.truncated;
+          span.dataset.expanded = "false";
+        }
+      });
+    });
+
+    function toggleText(id) {
+      const preview = document.getElementById(`function-preview-${id}`);
+      const link = document.getElementById(`toggle-link-${id}`);
+      const isOpen = preview.dataset.expanded === "true";
+
+      if (isOpen) {
+        preview.textContent = preview.dataset.truncated;
+        link.textContent = "Show more";
+        preview.dataset.expanded = "false";
+      } else {
+        preview.textContent = preview.dataset.full;
+        link.textContent = "Show less";
+        preview.dataset.expanded = "true";
+      }
+    }
+
+    function toggleRef(id) {
+      const preview = document.getElementById(`reference-preview-${id}`);
+      const link = document.getElementById(`toggle-ref-${id}`);
+      const isOpen = preview.dataset.expanded === "true";
+
+      if (isOpen) {
+        preview.textContent = preview.dataset.truncated;
+        link.textContent = "Show more";
+        preview.dataset.expanded = "false";
+      } else {
+        // Aquí convertimos saltos de línea a <br> para mostrar bien referencias
+        preview.innerHTML = preview.dataset.full.replace(/\n/g, "<br>");
+        link.textContent = "Show less";
+        preview.dataset.expanded = "true";
+      }
+    }
+</script>
+
 </html>
