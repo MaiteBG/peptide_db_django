@@ -16,12 +16,20 @@ class ProteinsByOrganismView(ListView):
         organism = get_object_or_404(Organism, scientific_name__iexact=scientific_name)
         proteins = Protein.objects.filter(organism=organism).select_related('organism', 'sequence')
 
-        # Añadimos atributos extra para las referencias
         for protein in proteins:
-            refs = protein.sequence.references.all()
-            refs_text = "\n".join(str(ref) for ref in refs)
-            protein.references_text = refs_text
-            protein.references_text_trunc = (refs_text[:50] + "…") if len(refs_text) > 50 else refs_text
+            refs = protein.sequence.references.all()[1:]
+            if refs:
+                first = refs[0].__format__("html")
+            else:
+                first = "N/A"
+            # Referencias completas con HTML (por ejemplo, enlaces UniProt)
+            rest = "<ul>" + "".join(f"<li>{ref.__format__('html')}</li>" for ref in refs[1:]) + "</ul>" \
+                if len(refs) > 1 else ""
+
+            protein.references_text = first + rest
+
+            # Truncado: mostrar siempre la primera línea, y luego añadir puntos suspensivos si hay más
+            protein.references_text_trunc = first if len(refs) <= 1 else first + "…"
 
         return proteins
 

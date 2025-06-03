@@ -512,6 +512,10 @@ class Reference(models.Model):
                 f"\tAccession: {accession_str}\n"
                 f"\tURL: {self.database.url_pattern.replace('{id}', self.db_accession)}\n"
             )
+        if spec == "html":
+            return (
+                f"{self.database.database_name}: <a href= {self.database.url_pattern.replace('{id}', self.db_accession)} target='blank'> {accession_str} </a>"
+            )
         else:
             # Brief single line summary
             return f"{self.database}: {self.db_accession or 'No reference ID'}"

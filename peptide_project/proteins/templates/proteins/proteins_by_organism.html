@@ -31,15 +31,15 @@
     </p>
 
     <p class="organism-details">
-      <strong>References:</strong> <br>
+        <strong>References:</strong>
       <span class="text-preview"
             id="reference-preview-{{ protein.id }}"
             data-full="{{ protein.references_text }}"
             data-truncated="{{ protein.references_text_trunc }}">
-    {{ protein.references_text_trunc }}
+              {{ protein.references_text_trunc|safe }}
   </span>
 
-      {% if protein.references_text|length > 50 %}
+        {% if protein.references_text|length > protein.references_text_trunc|length %}
       <a href="javascript:void(0);"
          class="toggle-link"
          id="toggle-ref-{{ protein.id }}"

@@ -86,16 +86,18 @@
       const isOpen = preview.dataset.expanded === "true";
 
       if (isOpen) {
-        preview.textContent = preview.dataset.truncated;
+        // Mostrar truncado (con HTML interpretado)
+        preview.innerHTML = preview.dataset.truncated;
         link.textContent = "Show more";
         preview.dataset.expanded = "false";
       } else {
-        // Aquí convertimos saltos de línea a <br> para mostrar bien referencias
-        preview.innerHTML = preview.dataset.full.replace(/\n/g, "<br>");
+        // Mostrar completo (también como HTML)
+        preview.innerHTML = preview.dataset.full;
         link.textContent = "Show less";
         preview.dataset.expanded = "true";
       }
     }
+
 </script>
 
 </html>
