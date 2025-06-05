@@ -1,24 +1,52 @@
-from django.shortcuts import get_object_or_404
-from django.views.generic import ListView
-
+from django.core.paginator import Paginator
+from django.db.models import Q
+from django.shortcuts import render
+from django.db.models import Count
 from catalog.models import Organism
 from proteins.models import Protein
+def protein_list(request):
+    query = request.GET.get("query", "")
+    organism_name = request.GET.get("organism")
+    proteins = Protein.objects.select_related("organism", "sequence").all()
 
+    if query:
+        proteins = proteins.filter(
+            Q(protein_name__icontains=query) | Q(uniprot_code__icontains=query)
+        )
 
-# Create your views here.
+    if organism_name:
+        proteins = proteins.filter(organism__scientific_name=organism_name)
+    paginator = Paginator(proteins, 20)
+    page_number = request.GET.get("page") or 1
+    page_obj = paginator.get_page(page_number)
 
-class ProteinsByOrganismView(ListView):
-    model = Protein
-    template_name = "proteins/proteins_by_organism.html"
-    context_object_name = "proteins"
+    # Añadir atributos solo a las proteínas de esta página
+    for protein in page_obj:
+        refs = protein.sequence.references.all()
+        if refs:
+            first = refs[0].__format__("html")
+        else:
+            first = "N/A"
 
-    def get_queryset(self):
-        scientific_name = self.kwargs["scientific_name"].replace("-", " ")
-        return Protein.objects.filter(sequence__organism__scientific_name__iexact=f"{scientific_name}")
+        rest = (
+            "<ul>" + "".join(f"<li>{ref.__format__('html')}</li>" for ref in refs[1:]) + "</ul>"
+            if len(refs) > 1 else ""
+        )
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        scientific_name = self.kwargs["scientific_name"].replace("-", " ")
-        organism = get_object_or_404(Organism, scientific_name__iexact=scientific_name)
-        context["organism"] = organism
-        return context
+        protein.references_text = first + rest
+        protein.references_text_trunc = first if len(refs) <= 1 else first
+
+    organisms = Organism.objects.annotate(protein_count=Count('protein'))
+    selected_organism = request.GET.get('organism', '')
+
+    context = {
+        "page_obj": page_obj,
+        "query": query,
+        "organisms": organisms,
+        'selected_organism': selected_organism,
+    }
+
+    if getattr(request, "htmx", False):
+        return render(request, "proteins/protein_list_page.html", context)
+
+    return render(request, "proteins/protein_list.html", context)

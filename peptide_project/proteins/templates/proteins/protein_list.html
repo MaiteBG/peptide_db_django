@@ -1,0 +1,59 @@
+{% extends "catalog/base.html" %}
+
+{% block content %}
+
+<div class="page-wrapper" style="max-width: 1100px; margin: 0 auto; padding: 10px; position: relative;">
+
+  <aside class="sidebar-filters" style="
+    position: sticky;
+    top: 10px;
+    width: 250px;
+    height: calc(100vh - 20px);
+    overflow-y: auto;
+    border: 1px solid #ccc;
+    padding: 10px;
+    float: left;
+  ">
+    <h3>Filtros</h3>
+    <form id="filters-form">
+      <label for="organism">Organismo:</label>
+      <select name="organism"
+              hx-get="{% url 'protein-list' %}"
+              hx-target="#protein-results"
+              hx-trigger="change"
+              hx-push-url="true"
+              style="width: 100%;">
+          <option value="">All organisms</option>
+          {% for organism in organisms %}
+          <option value="{{ organism.scientific_name }}"
+                  {% if organism.scientific_name== selected_organism %}selected{% endif %}>
+              {% if organism.common_name %}
+          {{ organism.common_name|capfirst }} (<em>{{ organism.scientific_name }}</em>) ({{ organism.protein_count }})
+              {% else %}
+          <em>{{ organism.scientific_name }}</em> ({{ organism.protein_count }})
+              {% endif %}
+          </option>
+          {% endfor %}
+      </select>
+
+    </form>
+  </aside>
+
+  <main style="margin-left: 270px; /* 250 sidebar + 20px gap */">
+    <form id="protein-filters" style="margin-bottom: 10px;">
+      <input type="text" name="query" placeholder="Buscar..."
+             value="{{ query|default:'' }}"
+             hx-get="{% url 'protein-list' %}"
+             hx-target="#protein-results"
+             hx-push-url="true"
+             hx-trigger="keyup changed delay:300ms"
+             style="width: 100%; padding: 6px; box-sizing: border-box;">
+    </form>
+
+    <div id="protein-results">
+      {% include "proteins/protein_list_page.html" %}
+    </div>
+  </main>
+
+</div>
+{% endblock %}

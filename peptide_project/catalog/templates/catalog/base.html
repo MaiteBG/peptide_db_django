@@ -1,19 +1,38 @@
 <!DOCTYPE html>
 {% load static %}
 {% load tooltip_tags %}
-<html>
+<html lang="en">
 <head>
-    <link rel="stylesheet" href="{% static 'css/main.css' %}">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"/>
+    <meta charset="UTF-8">
     <title>{% block title %}Peptide Database{% endblock %}</title>
 
+    <link rel="stylesheet" href="{% static 'css/main.css' %}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
 </head>
+
 <body>
-<header>
-    <!-- Aquí tu menú o logo -->
+
+<header class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="{% url 'home' %}">PeptideDB</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'protein-list' %}">Proteins</a>
+                </li>
+                <!-- Añade más enlaces si es necesario -->
+            </ul>
+        </div>
+    </div>
 </header>
 
-<main>
+
+<main class="mt-5">
     {% block content %}
     <!-- El contenido específico de cada página va aquí -->
     {% endblock %}
@@ -22,21 +41,102 @@
 <footer>
     <!-- Pie de página -->
 </footer>
-</body>
+
+<!-- Scripts: CARGAR SIEMPRE AL FINAL DEL BODY -->
+<script src="https://unpkg.com/htmx.org@1.9.2"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
 <script>
-    function toggleTaxonomy(button) {
-      const panel = button.nextElementSibling;
-      const isVisible = panel.style.display === "block";
-      panel.style.display = isVisible ? "none" : "block";
-      button.textContent = isVisible ? "Show Taxonomy Details" : "Hide Taxonomy Details";
+    document.addEventListener("DOMContentLoaded", () => {
+        const tooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+        tooltips.forEach(el => new bootstrap.Tooltip(el));
+
+        // Inicializa truncado de funciones
+        document.querySelectorAll(".text-preview.function").forEach(span => {
+            const full = span.textContent.trim();
+            if (full.length > 50) {
+                span.dataset.full = full;
+                span.dataset.truncated = full.slice(0, 50);
+                span.textContent = span.dataset.truncated;
+                span.dataset.expanded = "false";
+            }
+        });
+
+        // Inicializa truncado de referencias (si fueran solo texto plano)
+        document.querySelectorAll(".text-preview.references").forEach(span => {
+            const full = span.textContent.trim();
+            if (full.length > 50) {
+                span.dataset.full = full;
+                span.dataset.truncated = full.slice(0, 50);
+                span.textContent = span.dataset.truncated;
+                span.dataset.expanded = "false";
+            }
+        });
+    });
+
+function setupShowMoreLess() {
+  // Encuentra todos los previews con data-truncated y data-full
+  const previews = document.querySelectorAll("[data-truncated][data-full]");
+
+  previews.forEach(preview => {
+    const id = preview.dataset.id;  // asumimos que cada preview tiene un data-id único
+    const link = document.getElementById(`toggle-link-${id}`);
+
+    // Si no existe el link o no tiene id, omitimos
+    if (!link) return;
+
+    // Inicializar estado si no está definido
+    if (!preview.dataset.expanded) {
+      preview.dataset.expanded = "false";
+      preview.textContent = preview.dataset.truncated;
+      link.textContent = "Show more";
     }
-<script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js">
-</script>
-<script>
-    const tooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-    tooltips.forEach(el => new bootstrap.Tooltip(el));
+
+    // Añadir event listener para toggle
+    link.onclick = function() {
+      const isOpen = preview.dataset.expanded === "true";
+
+      if (isOpen) {
+        preview.textContent = preview.dataset.truncated;
+        link.textContent = "Show more";
+        preview.dataset.expanded = "false";
+      } else {
+        preview.textContent = preview.dataset.full;
+        link.textContent = "Show less";
+        preview.dataset.expanded = "true";
+      }
+    };
+  });
+}
+
+
+// Se ejecuta cuando la página carga
+setupShowMoreLess();
+
+// Se ejecuta cada vez que HTMX termina de insertar nuevo contenido en #protein-results
+document.body.addEventListener('htmx:afterSwap', (event) => {
+  if (event.target.id === 'protein-results') {
+    setupShowMoreLess();
+  }
+});
+
+function toggleRef(id) {
+    const preview = document.getElementById(`reference-preview-${id}`);
+    const link = document.getElementById(`toggle-ref-${id}`);
+    const isOpen = preview.dataset.expanded === "true";
+
+    if (isOpen) {
+        preview.innerHTML = preview.dataset.truncated;
+        link.textContent = "Show all references";
+        preview.dataset.expanded = "false";
+    } else {
+        preview.innerHTML = preview.dataset.full;
+        link.textContent = "Show only first reference";
+        preview.dataset.expanded = "true";
+    }
+}
+
 
 </script>
-
+</body>
 </html>

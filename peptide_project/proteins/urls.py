@@ -1,9 +1,8 @@
 # proteins/urls.py
 from django.urls import path
 
-from proteins.views import ProteinsByOrganismView
+from proteins.views import protein_list
 
 urlpatterns = [
-    path('by-organism/<str:scientific_name>/', ProteinsByOrganismView.as_view(), name='proteins-by-organism')
-
+    path('protein_list', protein_list, name='protein-list'),
 ]

@@ -17,8 +17,11 @@ Lista de Organismos
     <div class="organism-card">
         <div class="organism-block">
             <h3><em>{{organism.scientific_name}}</em></h3>
-            <a href="{% url 'proteins-by-organism' scientific_name=organism.scientific_name|slugify %}">
-                Show proteins from {{ organism.scientific_name }}</a>
+            <a href="{% url 'protein-list' %}?organism={{ organism.scientific_name }}" , target="_blank">
+                Show proteins from <em>{{ organism.scientific_name }}</em>
+            </a>
+
+
             <hr>
             <div class="organism-details">
                 <p><strong>Common Name:</strong> {{organism.common_name}}</p>

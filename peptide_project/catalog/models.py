@@ -1,8 +1,11 @@
+import hashlib
+
 import requests
 from Bio import Entrez
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
+from django.utils.text import slugify
 
 Entrez.email = "your.email@example.com"
 
@@ -22,24 +25,23 @@ class PeptideSequence(models.Model):
     """
 
     aa_seq = models.TextField()
-    organism = models.ForeignKey(
-        'catalog.Organism', null=True, blank=True, on_delete=models.SET_NULL
-    )
-    references = models.ManyToManyField(
-        'catalog.Reference', related_name='proteins'
-    )
-    uniprot_code = models.CharField(max_length=10, null=True, blank=True)
-    date_added = models.DateField(auto_now_add=True)
+    peptideseq_hash = models.CharField(max_length=32, unique=True, editable=False)
+    references = models.ManyToManyField('catalog.Reference', related_name='references')
 
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=['aa_seq', 'organism'],
-                name='unique_peptideseq_org'
+                fields=['peptideseq_hash'],
+                name='unique_peptideseq'
             )
         ]
         verbose_name = "Peptide Sequence"
         verbose_name_plural = "Peptide Sequences"
+
+    def save(self, *args, **kwargs):
+        if self.aa_seq:
+            self.peptideseq_hash = hashlib.md5(self.aa_seq.encode("utf-8")).hexdigest()
+        super().save(*args, **kwargs)
 
     def get_seq_preview(self, max_length=30):
         """
@@ -83,7 +85,6 @@ class PeptideSequence(models.Model):
         """
         id_part = f"id={self.id}" if self.id else "unsaved"
         aa_seq_preview = self.get_seq_preview()
-        organism = self.organism.scientific_name if self.organism else "No organism specified"
         refs = self.references.all()
         if refs.exists():
             ref_list = ", ".join(ref.__repr__() for ref in refs[:2])
@@ -91,8 +92,7 @@ class PeptideSequence(models.Model):
             ref_list = "No references provided"
 
         return (
-            f"<PeptideSequence({id_part}, aa_seq='{aa_seq_preview}', "
-            f"organism='{organism}', references='{ref_list}')>"
+            f"<PeptideSequence({id_part}, aa_seq='{aa_seq_preview}', references='{ref_list}')>"
         )
 
     def __format__(self, spec=None):
@@ -110,7 +110,6 @@ class PeptideSequence(models.Model):
         """
         sequence_id = f"{self.id}" if self.id else "(unsaved)"
         seq_preview = self.get_seq_preview()
-        organism_str = self.organism.scientific_name if self.organism else "Organism not specified"
         refs = self.references.all()
 
         if spec == "all":
@@ -120,42 +119,40 @@ class PeptideSequence(models.Model):
                 f"ID: {sequence_id}\n"
                 f"Sequence: {self.aa_seq}\n"
                 f"Sequence Length: {len(self.aa_seq)}\n"
-                f"Organism: {organism_str}\n"
                 f"References:\n{reference_str}\n"
-                f"UniProt code: {self.uniprot_code or 'UniProt code not available'}\n"
-                f"Date added to peptide_db: {self.date_added or 'Date not available'}"
             )
         else:
             reference_str = ", ".join(ref.__format__() for ref in refs) if refs.exists() else "Reference not provided"
             format_str = (
-                f"PeptideSequence #{sequence_id}: {seq_preview} "
-                f"from {organism_str} | Length: {len(self.aa_seq)} | (Refs: {reference_str}) "
+                f"PeptideSequence #{sequence_id}: {seq_preview} | Length: {len(self.aa_seq)} | (Refs: {reference_str}) "
             )
 
         return format_str
 
-    def add_reference(self, reference):
-        """
-        Adds a Reference instance to this PeptideSequence's references if it
-        does not already exist. Also validates that the organism associated
-        with the peptide sequence and the reference match (if both are set).
+    def add_references(self, references):
+        replacements = {
+            # to add replacements
+        }
 
-        Args:
-            reference (Reference): Reference instance to add.
+        for ref in references:
+            db_name = ref.get("database")
+            db_name = replacements.get(db_name, db_name)
+            external_id = ref.get("id")
+            if not db_name or not external_id:
+                continue  # skip invalid ref
 
-        Raises:
-            ValueError: If the organisms of the sequence and reference do not match.
-        """
-        # Validate organism match if both organisms exist
-        if self.organism and hasattr(reference, 'organism') and reference.organism:
-            if self.organism != reference.organism:
-                raise ValueError(
-                    "The organism of the peptide sequence and the reference do not match."
+            try:
+                database = Database.objects.get(pk=db_name)
+
+                reference, was_created = Reference.objects.get_or_create(
+                    database=database,
+                    db_accession=external_id
                 )
+                self.references.add(reference)
 
-        # Add reference only if not already associated
-        if not self.references.filter(pk=reference.pk).exists():
-            self.references.add(reference)
+            except Database.DoesNotExist:
+                # print(f"La base de datos '{db_name}' no existe.")
+                continue
 
 
 # --- Organism Model ---
@@ -175,12 +172,54 @@ class Organism(models.Model):
                                   help_text=("Taxonomic Class"))
     ncbi_url = models.URLField(max_length=120, blank=True, null=True)
 
+    slug = models.SlugField(max_length=255, unique=True, blank=True)
+
     class Meta:
         verbose_name = "Organism"
         verbose_name_plural = "Organisms"
 
+    @property
+    def slug(self):
+        return slugify(self.scientific_name)
+
     @staticmethod
-    def _find_organism_data(scientific_name: str) -> dict:
+    def get_organism_NCBI_id(scientific_name):
+        # Search taxonomy database for the scientific name
+        try:
+            with Entrez.esearch(db="taxonomy", term=scientific_name) as handle:
+                record = Entrez.read(handle)
+            id_list = record.get("IdList", [])
+            # If no IDs returned, organism does not exist in NCBI
+            if not id_list:
+                raise ValueError(f"No organism found for '{scientific_name}'")
+            return id_list
+        except Exception:
+            raise ValueError(f"Error searching organism '{scientific_name}'")
+
+    @staticmethod
+    def build_uniprot_url_from_organism_ids(organism_ids, size=500, format="list"):
+        """
+        Construye una URL de búsqueda para UniProt con múltiples organism_id.
+
+        Args:
+            organism_ids (list of int): Lista de NCBI Taxonomy IDs.
+            size (int): Número de resultados por página (máx 500).
+            format (str): Formato de salida (ej. "list", "json", etc.)
+
+        Returns:
+            str: URL completa para hacer la petición.
+        """
+        if not organism_ids:
+            raise ValueError("La lista de organism_ids no puede estar vacía.")
+
+        organism_query = "+OR+".join(f"taxonomy_id:{oid}" for oid in organism_ids)
+        full_query = f"reviewed:true+AND+({organism_query})"
+        base_url = "https://rest.uniprot.org/uniprotkb/search"
+
+        return f"{base_url}?query={full_query}&size={size}&format={format}"
+
+    @classmethod
+    def _find_organism_data(cls, scientific_name: str) -> dict:
         """
         Queries the NCBI Taxonomy database to find detailed information
         about an organism given its scientific name.
@@ -195,14 +234,8 @@ class Organism(models.Model):
         Raises:
             ValueError: If no organism or exact match is found for the given name.
         """
-        # Search taxonomy database for the scientific name
-        with Entrez.esearch(db="taxonomy", term=scientific_name) as handle:
-            record = Entrez.read(handle)
-        id_list = record.get("IdList", [])
 
-        # If no IDs returned, organism does not exist in NCBI
-        if not id_list:
-            raise ValueError(f"No organism found for '{scientific_name}'")
+        id_list = cls.get_organism_NCBI_id(scientific_name)
 
         # For each tax_id found, fetch detailed taxonomy record
         for tax_id in id_list:
@@ -211,7 +244,12 @@ class Organism(models.Model):
 
             # Check for exact scientific name match in returned records
             for rec in records:
-                if rec["ScientificName"].lower() == scientific_name.lower():
+                # Obtain synonym names
+                synonyms = rec.get("OtherNames", {}).get("Synonym", [])
+                synonyms_lower = [s.lower() for s in synonyms]
+
+                if (rec["ScientificName"].lower() == scientific_name.lower()
+                        or scientific_name.lower() in synonyms_lower):  # or synonym
                     # Build lineage dictionary: rank -> scientific name
                     lineage = {item["Rank"]: item["ScientificName"] for item in rec.get("LineageEx", [])}
 
@@ -235,12 +273,11 @@ class Organism(models.Model):
             _, scientific_name = next(iter(kwargs.items()))
             try:
                 data = Organism._find_organism_data(scientific_name)
-                print(data)
                 organism, created = Organism.objects.get_or_create(scientific_name=data["scientific_name"],
                                                                    defaults=data)
                 return organism, created
             except ValueError as e:
-                raise ValueError(f"No se pudo crear el organismo desde '{scientific_name}': {e}")
+                raise ValueError(f"{e}")
 
         # Caso general: usar get_or_create con lo que se pasa
         organism, created = Organism.objects.get_or_create(**kwargs)
@@ -474,6 +511,10 @@ class Reference(models.Model):
                 f"Database: {self.database.database_name}\n"
                 f"\tAccession: {accession_str}\n"
                 f"\tURL: {self.database.url_pattern.replace('{id}', self.db_accession)}\n"
+            )
+        if spec == "html":
+            return (
+                f"{self.database.database_name}: <a href= {self.database.url_pattern.replace('{id}', self.db_accession)} target='blank'> {accession_str} </a>"
             )
         else:
             # Brief single line summary
