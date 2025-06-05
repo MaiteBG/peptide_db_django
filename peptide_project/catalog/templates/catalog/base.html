@@ -12,11 +12,27 @@
 </head>
 
 <body>
-<header>
-    <!-- Aquí tu menú o logo -->
+
+<header class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="{% url 'home' %}">PeptideDB</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'protein-list' %}">Proteins</a>
+                </li>
+                <!-- Añade más enlaces si es necesario -->
+            </ul>
+        </div>
+    </div>
 </header>
 
-<main>
+
+<main class="mt-5">
     {% block content %}
     <!-- El contenido específico de cada página va aquí -->
     {% endblock %}

@@ -1,6 +1,7 @@
 {% extends "catalog/base.html" %}
 
 {% block content %}
+
 <div class="page-wrapper" style="max-width: 1100px; margin: 0 auto; padding: 10px; position: relative;">
 
   <aside class="sidebar-filters" style="
@@ -22,18 +23,19 @@
               hx-trigger="change"
               hx-push-url="true"
               style="width: 100%;">
-        <option value="">Todos los organismos</option>
-        {% for organism in organisms %}
-        <option value="{{ organism.scientific_name }}" {% if organism.scientific_name== selected_organism %}selected{%
-                endif %}>
-          {% if organism.common_name %}
+          <option value="">All organisms</option>
+          {% for organism in organisms %}
+          <option value="{{ organism.scientific_name }}"
+                  {% if organism.scientific_name== selected_organism %}selected{% endif %}>
+              {% if organism.common_name %}
           {{ organism.common_name|capfirst }} (<em>{{ organism.scientific_name }}</em>) ({{ organism.protein_count }})
-          {% else %}
+              {% else %}
           <em>{{ organism.scientific_name }}</em> ({{ organism.protein_count }})
-          {% endif %}
-        </option>
-        {% endfor %}
+              {% endif %}
+          </option>
+          {% endfor %}
       </select>
+
     </form>
   </aside>
 
