@@ -1,0 +1,20 @@
+{% extends "catalog/base.html" %}
+
+{% block content %}
+
+<form id="protein-filters">
+    <input type="text" name="query" placeholder="Buscar..."
+           name="query"
+           value="{{ query|default:'' }}"
+           hx-get="{% url 'protein-list' %}"
+           hx-target="#protein-results"
+           hx-push-url="true"
+           hx-trigger="keyup changed delay:300ms">
+</form>
+
+<!-- Contenedor que se actualizará dinámicamente -->
+<div id="protein-results">
+    {% include "proteins/protein_list_page.html" %}
+</div>
+
+{% endblock %}

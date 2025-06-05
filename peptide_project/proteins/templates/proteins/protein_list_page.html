@@ -1,0 +1,76 @@
+<table>
+    <thead>
+    <tr>
+        <th>Accession</th>
+        <th>Nombre</th>
+    </tr>
+    </thead>
+
+    <tbody>
+
+    {% for protein in page_obj %}
+    <div class="organism-card">
+        <h3>{{ protein.protein_name|default:"No name" }}</h3>
+        <p class="organism-details"><strong>Gene Name:</strong> {{ protein.gene_name|default:"-" }}</p>
+        <p class="organism-details"><strong>Organism:</strong> {{ protein.organism.scientific_name }}</p>
+        <p class="organism-details">
+            <strong>Function:</strong><br>
+            <span class="text-preview function" id="function-preview-{{ protein.id }}">
+    {{ protein.protein_function|default:"No description available" }}
+  </span>
+            {% if protein.protein_function and protein.protein_function|length > 50 %}
+            <a href="javascript:void(0);"
+               class="toggle-link"
+               id="toggle-link-{{ protein.id }}"
+               onclick="toggleText({{ protein.id }})">
+                Show more
+            </a>
+            {% endif %}
+        </p>
+
+        <p class="organism-details">
+            <strong>References:</strong>
+            <span class="text-preview"
+                  id="reference-preview-{{ protein.id }}"
+                  data-full="{{ protein.references_text }}"
+                  data-truncated="{{ protein.references_text_trunc }}">
+              {{ protein.references_text_trunc|safe }}
+  </span>
+
+            {% if protein.references_text|length > protein.references_text_trunc|length %}
+            <a href="javascript:void(0);"
+               class="toggle-link"
+               id="toggle-ref-{{ protein.id }}"
+               onclick="toggleRef({{ protein.id }})">
+                Show more
+            </a>
+            {% endif %}
+        </p>
+
+
+    </div>
+
+    {% empty %}
+    <p class="no-results">No proteins found.</p>
+
+    {% endfor %}
+    </tbody>
+</table>
+
+<div class="pagination">
+    {% if page_obj.has_previous %}
+    <a hx-get="?page={{ page_obj.previous_page_number }}&query={{ query }}"
+       hx-target="#protein-results"
+       hx-push-url="true"
+       hx-swap="innerHTML">Anterior</a>
+    {% endif %}
+
+    <span>Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+
+    {% if page_obj.has_next %}
+    <a hx-get="?page={{ page_obj.next_page_number }}&query={{ query }}"
+       hx-target="#protein-results"
+       hx-push-url="true"
+       hx-swap="innerHTML">Siguiente</a>
+    {% endif %}
+</div>
