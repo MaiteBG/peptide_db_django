@@ -12,21 +12,29 @@
     <div class="organism-card">
         <h3>{{ protein.protein_name|default:"No name" }}</h3>
         <p class="organism-details"><strong>Gene Name:</strong> {{ protein.gene_name|default:"-" }}</p>
-        <p class="organism-details"><strong>Organism:</strong> {{ protein.organism.scientific_name }}</p>
+      <p class="organism-details"><strong>Organism:</strong> <em>{{ protein.organism.scientific_name }}</em></p>
         <p class="organism-details">
-            <strong>Function:</strong><br>
-            <span class="text-preview function" id="function-preview-{{ protein.id }}">
-    {{ protein.protein_function|default:"No description available" }}
-  </span>
-            {% if protein.protein_function and protein.protein_function|length > 50 %}
-            <a href="javascript:void(0);"
-               class="toggle-link"
-               id="toggle-link-{{ protein.id }}"
-               onclick="toggleText({{ protein.id }})">
-                Show more
-            </a>
-            {% endif %}
-        </p>
+
+
+          <strong>Function:</strong>
+
+          <span class="text-preview function"
+                id="function-preview-{{ protein.id }}"
+                data-id="{{ protein.id }}"
+                data-full="{{ protein.protein_function|default:'No description available'}}"
+                data-truncated="{{ protein.protein_function|default:'No description available'|truncatechars:50}}">
+  {{ protein.protein_function|default:"No description available"|truncatechars:50 }}
+</span>
+
+          {% if protein.protein_function and protein.protein_function|length > 50 %}
+          <a href="javascript:void(0);"
+             class="toggle-link"
+             id="toggle-link-{{ protein.id }}">
+            Show more
+          </a>
+          {% endif %}
+
+
 
         <p class="organism-details">
             <strong>References:</strong>
@@ -42,7 +50,7 @@
                class="toggle-link"
                id="toggle-ref-{{ protein.id }}"
                onclick="toggleRef({{ protein.id }})">
-                Show more
+              &nbsp;&nbsp;&nbsp; Show all references
             </a>
             {% endif %}
         </p>

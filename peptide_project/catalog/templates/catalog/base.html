@@ -40,7 +40,7 @@
             const full = span.textContent.trim();
             if (full.length > 50) {
                 span.dataset.full = full;
-                span.dataset.truncated = full.slice(0, 50) + "…";
+                span.dataset.truncated = full.slice(0, 50);
                 span.textContent = span.dataset.truncated;
                 span.dataset.expanded = "false";
             }
@@ -51,51 +51,76 @@
             const full = span.textContent.trim();
             if (full.length > 50) {
                 span.dataset.full = full;
-                span.dataset.truncated = full.slice(0, 50) + "…";
+                span.dataset.truncated = full.slice(0, 50);
                 span.textContent = span.dataset.truncated;
                 span.dataset.expanded = "false";
             }
         });
     });
 
-    function toggleText(id) {
-        const preview = document.getElementById(`function-preview-${id}`);
-        const link = document.getElementById(`toggle-link-${id}`);
-        const isOpen = preview.dataset.expanded === "true";
+function setupShowMoreLess() {
+  // Encuentra todos los previews con data-truncated y data-full
+  const previews = document.querySelectorAll("[data-truncated][data-full]");
 
-        if (isOpen) {
-            preview.textContent = preview.dataset.truncated;
-            link.textContent = "Show more";
-            preview.dataset.expanded = "false";
-        } else {
-            preview.textContent = preview.dataset.full;
-            link.textContent = "Show less";
-            preview.dataset.expanded = "true";
-        }
+  previews.forEach(preview => {
+    const id = preview.dataset.id;  // asumimos que cada preview tiene un data-id único
+    const link = document.getElementById(`toggle-link-${id}`);
+
+    // Si no existe el link o no tiene id, omitimos
+    if (!link) return;
+
+    // Inicializar estado si no está definido
+    if (!preview.dataset.expanded) {
+      preview.dataset.expanded = "false";
+      preview.textContent = preview.dataset.truncated;
+      link.textContent = "Show more";
     }
 
-    function toggleRef(id) {
-        const preview = document.getElementById(`reference-preview-${id}`);
-        const link = document.getElementById(`toggle-ref-${id}`);
-        const isOpen = preview.dataset.expanded === "true";
+    // Añadir event listener para toggle
+    link.onclick = function() {
+      const isOpen = preview.dataset.expanded === "true";
 
-        if (isOpen) {
-            preview.innerHTML = preview.dataset.truncated;
-            link.textContent = "Show more";
-            preview.dataset.expanded = "false";
-        } else {
-            preview.innerHTML = preview.dataset.full;
-            link.textContent = "Show less";
-            preview.dataset.expanded = "true";
-        }
-    }
+      if (isOpen) {
+        preview.textContent = preview.dataset.truncated;
+        link.textContent = "Show more";
+        preview.dataset.expanded = "false";
+      } else {
+        preview.textContent = preview.dataset.full;
+        link.textContent = "Show less";
+        preview.dataset.expanded = "true";
+      }
+    };
+  });
+}
 
-    function toggleTaxonomy(button) {
-        const panel = button.nextElementSibling;
-        const isVisible = panel.style.display === "block";
-        panel.style.display = isVisible ? "none" : "block";
-        button.textContent = isVisible ? "Show Taxonomy Details" : "Hide Taxonomy Details";
+
+// Se ejecuta cuando la página carga
+setupShowMoreLess();
+
+// Se ejecuta cada vez que HTMX termina de insertar nuevo contenido en #protein-results
+document.body.addEventListener('htmx:afterSwap', (event) => {
+  if (event.target.id === 'protein-results') {
+    setupShowMoreLess();
+  }
+});
+
+function toggleRef(id) {
+    const preview = document.getElementById(`reference-preview-${id}`);
+    const link = document.getElementById(`toggle-ref-${id}`);
+    const isOpen = preview.dataset.expanded === "true";
+
+    if (isOpen) {
+        preview.innerHTML = preview.dataset.truncated;
+        link.textContent = "Show all references";
+        preview.dataset.expanded = "false";
+    } else {
+        preview.innerHTML = preview.dataset.full;
+        link.textContent = "Show only first reference";
+        preview.dataset.expanded = "true";
     }
+}
+
+
 </script>
 </body>
 </html>
