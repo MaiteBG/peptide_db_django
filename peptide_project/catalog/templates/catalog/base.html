@@ -6,6 +6,7 @@
     <meta charset="UTF-8">
     <title>{% block title %}Peptide Database{% endblock %}</title>
 
+    <!-- Static CSS and third-party styles -->
     <link rel="stylesheet" href="{% static 'css/main.css' %}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"/>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
@@ -13,6 +14,7 @@
 
 <body>
 
+<!-- Fixed-top navigation bar -->
 <header class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
     <div class="container-fluid">
         <a class="navbar-brand" href="{% url 'home' %}">PeptideDB</a>
@@ -20,38 +22,42 @@
                 aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
+
+        <!-- Navigation links -->
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav me-auto">
                 <li class="nav-item">
                     <a class="nav-link" href="{% url 'protein-list' %}">Proteins</a>
                 </li>
-                <!-- Añade más enlaces si es necesario -->
+                <!-- Add more nav links if needed -->
             </ul>
         </div>
     </div>
 </header>
 
-
+<!-- Main content area with spacing from fixed-top nav -->
 <main class="mt-5">
     {% block content %}
-    <!-- El contenido específico de cada página va aquí -->
+    <!-- Page-specific content will be inserted here -->
     {% endblock %}
 </main>
 
+<!-- Footer (currently empty) -->
 <footer>
-    <!-- Pie de página -->
+    <!-- Add footer content here if needed -->
 </footer>
 
-<!-- Scripts: CARGAR SIEMPRE AL FINAL DEL BODY -->
+<!-- JS dependencies: load at the end for performance -->
 <script src="https://unpkg.com/htmx.org@1.9.2"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
+    // Initialize Bootstrap tooltips
     document.addEventListener("DOMContentLoaded", () => {
         const tooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
         tooltips.forEach(el => new bootstrap.Tooltip(el));
 
-        // Inicializa truncado de funciones
+        // Truncate text for .function previews
         document.querySelectorAll(".text-preview.function").forEach(span => {
             const full = span.textContent.trim();
             if (full.length > 50) {
@@ -62,7 +68,7 @@
             }
         });
 
-        // Inicializa truncado de referencias (si fueran solo texto plano)
+        // Truncate text for .references previews
         document.querySelectorAll(".text-preview.references").forEach(span => {
             const full = span.textContent.trim();
             if (full.length > 50) {
@@ -74,69 +80,99 @@
         });
     });
 
-function setupShowMoreLess() {
-  // Encuentra todos los previews con data-truncated y data-full
-  const previews = document.querySelectorAll("[data-truncated][data-full]");
+    // Function to enable "Show more / Show less" toggling
+    function setupShowMoreLess() {
+        const previews = document.querySelectorAll("[data-truncated][data-full]");
 
-  previews.forEach(preview => {
-    const id = preview.dataset.id;  // asumimos que cada preview tiene un data-id único
-    const link = document.getElementById(`toggle-link-${id}`);
+        previews.forEach(preview => {
+            const id = preview.dataset.id;
+            const link = document.getElementById(`toggle-link-${id}`);
+            if (!link) return;
 
-    // Si no existe el link o no tiene id, omitimos
-    if (!link) return;
+            if (!preview.dataset.expanded) {
+                preview.dataset.expanded = "false";
+                preview.textContent = preview.dataset.truncated;
+                link.textContent = "Show more";
+            }
 
-    // Inicializar estado si no está definido
-    if (!preview.dataset.expanded) {
-      preview.dataset.expanded = "false";
-      preview.textContent = preview.dataset.truncated;
-      link.textContent = "Show more";
+            link.onclick = function() {
+                const isOpen = preview.dataset.expanded === "true";
+
+                if (isOpen) {
+                    preview.textContent = preview.dataset.truncated;
+                    link.textContent = "Show more";
+                    preview.dataset.expanded = "false";
+                } else {
+                    preview.textContent = preview.dataset.full;
+                    link.textContent = "Show less";
+                    preview.dataset.expanded = "true";
+                }
+            };
+        });
     }
 
-    // Añadir event listener para toggle
-    link.onclick = function() {
-      const isOpen = preview.dataset.expanded === "true";
-
-      if (isOpen) {
-        preview.textContent = preview.dataset.truncated;
-        link.textContent = "Show more";
-        preview.dataset.expanded = "false";
-      } else {
-        preview.textContent = preview.dataset.full;
-        link.textContent = "Show less";
-        preview.dataset.expanded = "true";
-      }
-    };
-  });
-}
-
-
-// Se ejecuta cuando la página carga
-setupShowMoreLess();
-
-// Se ejecuta cada vez que HTMX termina de insertar nuevo contenido en #protein-results
-document.body.addEventListener('htmx:afterSwap', (event) => {
-  if (event.target.id === 'protein-results') {
+    // Call on page load
     setupShowMoreLess();
-  }
-});
 
-function toggleRef(id) {
-    const preview = document.getElementById(`reference-preview-${id}`);
-    const link = document.getElementById(`toggle-ref-${id}`);
-    const isOpen = preview.dataset.expanded === "true";
+    // Re-bind after HTMX loads new content
+    document.body.addEventListener('htmx:afterSwap', (event) => {
+        if (event.target.id === 'protein-results') {
+            setupShowMoreLess();
+        }
+    });
 
-    if (isOpen) {
-        preview.innerHTML = preview.dataset.truncated;
-        link.textContent = "Show all references";
-        preview.dataset.expanded = "false";
-    } else {
-        preview.innerHTML = preview.dataset.full;
-        link.textContent = "Show only first reference";
-        preview.dataset.expanded = "true";
+    // Toggle full/short references (used in another part of the app)
+    function toggleRef(id) {
+        const preview = document.getElementById(`reference-preview-${id}`);
+        const link = document.getElementById(`toggle-ref-${id}`);
+        const isOpen = preview.dataset.expanded === "true";
+
+        if (isOpen) {
+            preview.innerHTML = preview.dataset.truncated;
+            link.textContent = "Show all references";
+            preview.dataset.expanded = "false";
+        } else {
+            preview.innerHTML = preview.dataset.full;
+            link.textContent = "Show only first reference";
+            preview.dataset.expanded = "true";
+        }
     }
-}
 
+    // Function to create taxonomy filter <select> elements dynamically
+    function createFilterSelect(labelText, items, selectedValue, name, extraAttributes = {}) {
+        const container = document.createElement('div');
 
+        const label = document.createElement('label');
+        label.setAttribute('for', name);
+        label.textContent = labelText + ':';
+        container.appendChild(label);
+
+        const select = document.createElement('select');
+        select.id = name;
+        select.name = name;
+        select.style.width = '100%';
+
+        for (const [attr, val] of Object.entries(extraAttributes)) {
+            select.setAttribute(attr, val);
+        }
+
+        const defaultOption = document.createElement('option');
+        defaultOption.value = '';
+        defaultOption.textContent = `All ${labelText.toLowerCase()}s`;
+        select.appendChild(defaultOption);
+
+        items.forEach(item => {
+            const option = document.createElement('option');
+            option.value = item.value;
+            option.selected = item.value === selectedValue;
+            option.innerHTML = item.label + (item.count !== undefined ? ` (${item.count})` : '');
+            select.appendChild(option);
+        });
+
+        container.appendChild(select);
+        return container;
+    }
 </script>
+
 </body>
 </html>
