@@ -1,0 +1,30 @@
+{% load tooltip_tags %}
+
+
+{% if organisms %}
+{% for organism in organisms %}
+<div class="organism-card">
+    <div class="organism-block">
+        <h3><em>{{ organism.scientific_name }}</em></h3>
+        <a href="{% url 'protein-list' %}?organism={{ organism.scientific_name }}" target="_blank">
+            Show proteins from <em>{{ organism.scientific_name }}</em>
+        </a>
+        <hr>
+        <div class="organism-details">
+            <p><strong>Common Name:</strong> {{ organism.common_name }}</p>
+            <p><strong>Taxonomy:</strong>
+                <em>
+                    {{ organism.kingdom }} {% tooltip_icon help_texts.kingdom "Help information about Kingdom" %} -
+                    {{ organism.phylum }} {% tooltip_icon help_texts.phylum "Help information about Phylum" %} -
+                    {{ organism.class_name }} {% tooltip_icon help_texts.class_name "Help information about Class" %}
+                </em>
+            </p>
+            <p><strong>NCBI URL:</strong> <a href="{{ organism.ncbi_url }}" target="_blank">{{ organism.ncbi_url }}</a>
+            </p>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% else %}
+<p class="no-results">No organisms found.</p>
+{% endif %}

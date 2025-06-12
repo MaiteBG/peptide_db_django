@@ -14,34 +14,15 @@
     padding: 10px;
     float: left;
   ">
-    <h3>Filtros</h3>
+    <h3>Filters</h3>
     <form id="filters-form">
-      <label for="organism">Organismo:</label>
-      <select name="organism"
-              hx-get="{% url 'protein-list' %}"
-              hx-target="#protein-results"
-              hx-trigger="change"
-              hx-push-url="true"
-              style="width: 100%;">
-          <option value="">All organisms</option>
-          {% for organism in organisms %}
-          <option value="{{ organism.scientific_name }}"
-                  {% if organism.scientific_name== selected_organism %}selected{% endif %}>
-              {% if organism.common_name %}
-          {{ organism.common_name|capfirst }} (<em>{{ organism.scientific_name }}</em>) ({{ organism.protein_count }})
-              {% else %}
-          <em>{{ organism.scientific_name }}</em> ({{ organism.protein_count }})
-              {% endif %}
-          </option>
-          {% endfor %}
-      </select>
-
+      <!-- dynamic select here -->
     </form>
   </aside>
 
-  <main style="margin-left: 270px; /* 250 sidebar + 20px gap */">
+  <main style="margin-left: 270px;">
     <form id="protein-filters" style="margin-bottom: 10px;">
-      <input type="text" name="query" placeholder="Buscar..."
+      <input type="text" name="query" placeholder="Search..."
              value="{{ query|default:'' }}"
              hx-get="{% url 'protein-list' %}"
              hx-target="#protein-results"
@@ -56,4 +37,33 @@
   </main>
 
 </div>
+
+
+<script>
+
+
+  const organisms = [
+    {% for organism in organisms %}
+      {
+        value: "{{ organism.scientific_name }}",
+        label: `{% if organism.common_name %}{{ organism.common_name|capfirst }} (<em>{{ organism.scientific_name }}</em>){% else %}<em>{{ organism.scientific_name }}</em>{% endif %}`,
+        count: {{ organism.protein_count }}
+      }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  ];
+
+  const selectedOrganism = "{{ selected_organism|default:'' }}";
+
+
+  document.addEventListener("DOMContentLoaded", () => {
+      const attributes = {
+          'hx-get': "{% url 'protein-list' %}",
+          'hx-target': "#protein-results",
+          'hx-trigger': "change",
+          'hx-push-url': "true"
+      };
+      const selectElement = createFilterSelect("Organism", organisms, selectedOrganism, "organism", attributes);
+      document.getElementById("filters-form").appendChild(selectElement);
+  });
+</script>
 {% endblock %}

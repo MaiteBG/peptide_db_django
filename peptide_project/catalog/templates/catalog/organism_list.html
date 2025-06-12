@@ -1,45 +1,84 @@
-<!-- organism_list.html -->
 {% extends "catalog/base.html" %}
-{% load tooltip_tags %}
-
-{% block title %}
-Lista de Organismos
-{% endblock %}
 
 {% block content %}
-<!-- contenido de esta página -->
+<div class="page-wrapper" style="max-width: 1100px; margin: 0 auto; padding: 10px; position: relative;">
 
+  <!-- Sidebar de filtros -->
+  <aside class="sidebar-filters" style="
+    position: sticky;
+    top: 10px;
+    width: 250px;
+    height: calc(100vh - 20px);
+    overflow-y: auto;
+    border: 1px solid #ccc;
+    padding: 10px;
+    float: left;
+  ">
+    <h3>Taxonomy Filters</h3>
+    <form id="filters-form" name="filters-form" method="get" style="display: flex; flex-direction: column; gap: 15px;"
+          hx-get="{% url 'organism-list' %}"
+          hx-target="#organism-results"
+          hx-push-url="true"
+          hx-trigger="keyup changed delay:300ms"
+          hx-include="#filters-form">
 
-<h1>Organisms</h1>
+      {# Los selects se crearán con JavaScript #}
+    </form>
+  </aside>
 
-<div class="organism-container">
-    {% for organism in organisms %}
-    <div class="organism-card">
-        <div class="organism-block">
-            <h3><em>{{organism.scientific_name}}</em></h3>
-            <a href="{% url 'protein-list' %}?organism={{ organism.scientific_name }}" , target="_blank">
-                Show proteins from <em>{{ organism.scientific_name }}</em>
-            </a>
+  <!-- Resultados -->
+  <main style="margin-left: 270px;">
+    <form id="organism-search" style="margin-bottom: 10px;">
+      <input type="text" name="query" placeholder="Search..."
+             value="{{ query|default:'' }}"
+             hx-get="{% url 'organism-list' %}"
+             hx-target="#organism-results"
+             hx-push-url="true"
+             hx-trigger="keyup changed delay:300ms"
+             hx-include="#organism-search"
+             style="width: 100%; padding: 6px; box-sizing: border-box;">
+    </form>
 
-
-            <hr>
-            <div class="organism-details">
-                <p><strong>Common Name:</strong> {{organism.common_name}}</p>
-                <p><strong>Taxonomy:</strong>
-                    <em>
-                        {{ organism.kingdom }} {% tooltip_icon help_texts.kingdom "Help information about Kingdom" %} -
-                        {{ organism.phylum }} {% tooltip_icon help_texts.phylum "Help information about Phylum" %} -
-                        {{ organism.class_name }} {% tooltip_icon help_texts.class_name "Help information about Class"%}
-                    </em>
-                </p>
-                <p><strong>NCBI URL:</strong> <a href="{{organism.ncbi_url}}" target="_blank">{{organism.ncbi_url}}</a>
-                </p>
-
-            </div>
-        </div>
+    <div id="organism-results">
+      {% include "catalog/organism_results.html" %}
     </div>
-    {% empty %}
-    <p class="no-results">No organisms found.</p>
-    {% endfor %}
+  </main>
+
 </div>
+
+<script>
+  const kingdoms = {{ kingdoms_json|safe }};
+  const phyla = {{ phyla_json|safe }};
+  const classes = {{ classes_json|safe }};
+
+  const selected = {
+    kingdom: "{{ selected_kingdom|default:'' }}",
+    phylum: "{{ selected_phylum|default:'' }}",
+    class_name: "{{ selected_class_name|default:'' }}"
+  };
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const form = document.getElementById("filters-form");
+    form.innerHTML = '';
+
+    const attributes = {
+    'hx-get': "{% url "organism-list" %}",
+    'hx-target': "#organism-results",
+    'hx-trigger': "change",
+    'hx-push-url': "true",
+    'hx-include': "#filters-form, #organism-search"
+    };
+
+    const kingdomSelect = createFilterSelect("Kingdom", kingdoms, selected.kingdom, "kingdom", attributes);
+    const phylumSelect = createFilterSelect("Phylum", phyla, selected.phylum, "phylum", attributes);
+    const classSelect = createFilterSelect("Class", classes, selected.class_name, "class_name", attributes);
+
+    form.appendChild(kingdomSelect);
+    form.appendChild(phylumSelect);
+    form.appendChild(classSelect);
+    htmx.process(document.getElementById("filters-form"));
+
+  });
+</script>
+
 {% endblock %}

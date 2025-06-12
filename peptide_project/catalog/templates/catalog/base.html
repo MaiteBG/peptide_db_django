@@ -136,6 +136,47 @@ function toggleRef(id) {
     }
 }
 
+function createFilterSelect(labelText, items, selectedValue, name, extraAttributes = {}) {
+    // Crear contenedor
+    const container = document.createElement('div');
+
+    // Crear label
+    const label = document.createElement('label');
+    label.setAttribute('for', name);
+    label.textContent = labelText + ':';
+    container.appendChild(label);
+
+    // Crear select
+    const select = document.createElement('select');
+    select.name = name;
+    select.style.width = '100%';
+
+    // Añadir atributos adicionales como hx-get, hx-trigger, etc.
+    for (const [attr, val] of Object.entries(extraAttributes)) {
+        select.setAttribute(attr, val);
+    }
+
+    // Opción por defecto
+    const defaultOption = document.createElement('option');
+    defaultOption.value = '';
+    defaultOption.textContent = `All ${labelText.toLowerCase()}s`;
+    select.appendChild(defaultOption);
+
+    // Añadir items
+    items.forEach(item => {
+        const option = document.createElement('option');
+        option.value = item.value;
+        option.selected = item.value === selectedValue;
+
+        // Construir etiqueta legible
+        option.innerHTML = item.label + (item.count !== undefined ? ` (${item.count})` : '');
+        select.appendChild(option);
+    });
+
+    container.appendChild(select);
+    return container;
+}
+
 
 </script>
 </body>
