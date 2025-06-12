@@ -1,33 +1,33 @@
 {% extends "catalog/base.html" %}
 
 {% block content %}
+
+<!-- Wrapper for the entire page content -->
 <div class="page-wrapper" style="max-width: 1100px; margin: 0 auto; padding: 10px; position: relative;">
 
-  <!-- Sidebar de filtros -->
+  <!-- Sidebar with taxonomy filters -->
   <aside class="sidebar-filters" style="
-    position: sticky;
-    top: 10px;
-    width: 250px;
-    height: calc(100vh - 20px);
-    overflow-y: auto;
-    border: 1px solid #ccc;
+    position: sticky;        /* Makes the sidebar stick while scrolling */
+    top: 10px;               /* Offset from the top of the viewport */
+    width: 250px;            /* Fixed sidebar width */
+    height: calc(100vh - 20px);  /* Full viewport height minus padding */
+    overflow-y: auto;        /* Enable scrolling if content is long */
+    border: 1px solid #ccc;  /* Light border for visual separation */
     padding: 10px;
     float: left;
   ">
     <h3>Taxonomy Filters</h3>
-    <form id="filters-form" name="filters-form" method="get" style="display: flex; flex-direction: column; gap: 15px;"
-          hx-get="{% url 'organism-list' %}"
-          hx-target="#organism-results"
-          hx-push-url="true"
-          hx-trigger="keyup changed delay:300ms"
-          hx-include="#filters-form">
 
-      {# Los selects se crearán con JavaScript #}
+    <!-- Filter form: dynamically populated via JavaScript -->
+    <form id="filters-form" name="filters-form" method="get">
+      <!-- Dynamic <select> elements will be inserted here by JS -->
     </form>
   </aside>
 
-  <!-- Resultados -->
-  <main style="margin-left: 270px;">
+  <!-- Main content area: search input and results -->
+  <main style="margin-left: 270px;">  <!-- Space to the right of the sidebar -->
+
+    <!-- Search bar for filtering organisms by name or taxonomy -->
     <form id="organism-search" style="margin-bottom: 10px;">
       <input type="text" name="query" placeholder="Search..."
              value="{{ query|default:'' }}"
@@ -35,50 +35,17 @@
              hx-target="#organism-results"
              hx-push-url="true"
              hx-trigger="keyup changed delay:300ms"
-             hx-include="#organism-search"
+             hx-include="#filters-form, #organism-search"
              style="width: 100%; padding: 6px; box-sizing: border-box;">
+
     </form>
 
+    <!-- Organism list will be rendered inside this container -->
     <div id="organism-results">
       {% include "catalog/organism_results.html" %}
     </div>
   </main>
 
 </div>
-
-<script>
-  const kingdoms = {{ kingdoms_json|safe }};
-  const phyla = {{ phyla_json|safe }};
-  const classes = {{ classes_json|safe }};
-
-  const selected = {
-    kingdom: "{{ selected_kingdom|default:'' }}",
-    phylum: "{{ selected_phylum|default:'' }}",
-    class_name: "{{ selected_class_name|default:'' }}"
-  };
-
-  document.addEventListener("DOMContentLoaded", () => {
-    const form = document.getElementById("filters-form");
-    form.innerHTML = '';
-
-    const attributes = {
-    'hx-get': "{% url "organism-list" %}",
-    'hx-target': "#organism-results",
-    'hx-trigger': "change",
-    'hx-push-url': "true",
-    'hx-include': "#filters-form, #organism-search"
-    };
-
-    const kingdomSelect = createFilterSelect("Kingdom", kingdoms, selected.kingdom, "kingdom", attributes);
-    const phylumSelect = createFilterSelect("Phylum", phyla, selected.phylum, "phylum", attributes);
-    const classSelect = createFilterSelect("Class", classes, selected.class_name, "class_name", attributes);
-
-    form.appendChild(kingdomSelect);
-    form.appendChild(phylumSelect);
-    form.appendChild(classSelect);
-    htmx.process(document.getElementById("filters-form"));
-
-  });
-</script>
 
 {% endblock %}
