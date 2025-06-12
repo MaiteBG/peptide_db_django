@@ -1,45 +1,51 @@
-<!-- organism_list.html -->
 {% extends "catalog/base.html" %}
-{% load tooltip_tags %}
-
-{% block title %}
-Lista de Organismos
-{% endblock %}
 
 {% block content %}
-<!-- contenido de esta página -->
 
+<!-- Wrapper for the entire page content -->
+<div class="page-wrapper" style="max-width: 1100px; margin: 0 auto; padding: 10px; position: relative;">
 
-<h1>Organisms</h1>
+  <!-- Sidebar with taxonomy filters -->
+  <aside class="sidebar-filters" style="
+    position: sticky;        /* Makes the sidebar stick while scrolling */
+    top: 10px;               /* Offset from the top of the viewport */
+    width: 250px;            /* Fixed sidebar width */
+    height: calc(100vh - 20px);  /* Full viewport height minus padding */
+    overflow-y: auto;        /* Enable scrolling if content is long */
+    border: 1px solid #ccc;  /* Light border for visual separation */
+    padding: 10px;
+    float: left;
+  ">
+    <h3>Taxonomy Filters</h3>
 
-<div class="organism-container">
-    {% for organism in organisms %}
-    <div class="organism-card">
-        <div class="organism-block">
-            <h3><em>{{organism.scientific_name}}</em></h3>
-            <a href="{% url 'protein-list' %}?organism={{ organism.scientific_name }}" , target="_blank">
-                Show proteins from <em>{{ organism.scientific_name }}</em>
-            </a>
+    <!-- Filter form: dynamically populated via JavaScript -->
+    <form id="filters-form" name="filters-form" method="get">
+      <!-- Dynamic <select> elements will be inserted here by JS -->
+    </form>
+  </aside>
 
+  <!-- Main content area: search input and results -->
+  <main style="margin-left: 270px;">  <!-- Space to the right of the sidebar -->
 
-            <hr>
-            <div class="organism-details">
-                <p><strong>Common Name:</strong> {{organism.common_name}}</p>
-                <p><strong>Taxonomy:</strong>
-                    <em>
-                        {{ organism.kingdom }} {% tooltip_icon help_texts.kingdom "Help information about Kingdom" %} -
-                        {{ organism.phylum }} {% tooltip_icon help_texts.phylum "Help information about Phylum" %} -
-                        {{ organism.class_name }} {% tooltip_icon help_texts.class_name "Help information about Class"%}
-                    </em>
-                </p>
-                <p><strong>NCBI URL:</strong> <a href="{{organism.ncbi_url}}" target="_blank">{{organism.ncbi_url}}</a>
-                </p>
+    <!-- Search bar for filtering organisms by name or taxonomy -->
+    <form id="organism-search" style="margin-bottom: 10px;">
+      <input type="text" name="query" placeholder="Search..."
+             value="{{ query|default:'' }}"
+             hx-get="{% url 'organism-list' %}"
+             hx-target="#organism-results"
+             hx-push-url="true"
+             hx-trigger="keyup changed delay:300ms"
+             hx-include="#filters-form, #organism-search"
+             style="width: 100%; padding: 6px; box-sizing: border-box;">
 
-            </div>
-        </div>
+    </form>
+
+    <!-- Organism list will be rendered inside this container -->
+    <div id="organism-results">
+      {% include "catalog/organism_results.html" %}
     </div>
-    {% empty %}
-    <p class="no-results">No organisms found.</p>
-    {% endfor %}
+  </main>
+
 </div>
+
 {% endblock %}

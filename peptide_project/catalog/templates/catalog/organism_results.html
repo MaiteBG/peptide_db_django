@@ -1,0 +1,124 @@
+{% load tooltip_tags %}
+
+<!-- Main container for organism results and filtering -->
+<div id="organism-results"
+     data-kingdoms='{{ kingdoms_json|escapejs }}'
+     data-phyla='{{ phyla_json|escapejs }}'
+     data-classes='{{ classes_json|escapejs }}'>
+
+    <!-- Filter form: dynamically updated with JS/HTMX -->
+    <form id="filters-form" name="filters-form" method="get"
+          style="display: flex; flex-direction: column; gap: 15px;"
+          hx-get="{% url 'organism-list' %}"
+          hx-target="#organism-results"
+          hx-push-url="true"
+          hx-trigger="keyup changed delay:300ms"
+          hx-include="#filters-form">
+        {# The select fields will be dynamically inserted via JavaScript #}
+    </form>
+
+    <!-- Organism cards will be rendered here -->
+</div>
+
+<!-- Check if there are organisms to display -->
+{% if organisms %}
+{% for organism in organisms %}
+<div class="organism-card">
+    <div class="organism-block">
+        <h3><em>{{ organism.scientific_name }}</em></h3>
+
+        <!-- Link to view proteins associated with this organism -->
+        <a href="{% url 'protein-list' %}?organism={{ organism.scientific_name }}" target="_blank">
+            Show proteins from <em>{{ organism.scientific_name }}</em>
+        </a>
+
+        <hr>
+
+        <div class="organism-details">
+            <p><strong>Common Name:</strong> {{ organism.common_name }}</p>
+            <p><strong>Taxonomy:</strong>
+                <em>
+                    {{ organism.kingdom }} {% tooltip_icon help_texts.kingdom "Help information about Kingdom" %} -
+                    {{ organism.phylum }} {% tooltip_icon help_texts.phylum "Help information about Phylum" %} -
+                    {{ organism.class_name }} {% tooltip_icon help_texts.class_name "Help information about Class" %}
+                </em>
+            </p>
+            <p><strong>NCBI URL:</strong>
+                <a href="{{ organism.ncbi_url }}" target="_blank">{{ organism.ncbi_url }}</a>
+            </p>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% else %}
+<!-- Message displayed if no organisms match the filters -->
+<p class="no-results">No organisms found.</p>
+{% endif %}
+
+
+<!-- JavaScript section to dynamically build filters and handle updates via HTMX -->
+<script>
+    function getContext() {
+      // Extract current selected filter values from the Django context
+      const selected = {
+        kingdom: "{{ selected_kingdom }}",
+        phylum: "{{ selected_phylum }}",
+        class_name: "{{ selected_class }}"
+      };
+
+      // Load filter option data passed from the backend
+      const kingdoms = {{ kingdoms_json|safe }};
+      const phyla = {{ phyla_json|safe }};
+      const classes = {{ classes_json|safe }};
+
+      return {
+        selected,
+        kingdoms,
+        phyla,
+        classes
+      };
+    }
+
+    function updateFilters() {
+      // Rebuild the select filter elements based on current state
+      const current = getContext();
+      const { selected, kingdoms, phyla, classes } = current;
+
+      const form = document.getElementById("filters-form");
+      form.innerHTML = '';  // Clear old selects
+
+      // Define HTMX attributes for live interaction
+      const attributes = {
+        'hx-get': "{% url 'organism-list' %}",
+        'hx-target': "#organism-results",
+        'hx-trigger': "change",
+        'hx-push-url': "true",
+        'hx-include': "#filters-form, #organism-search"
+      };
+
+      // Create and append each select filter dynamically
+      const kingdomSelect = createFilterSelect("Kingdom", kingdoms, selected.kingdom, "kingdom", attributes);
+      const phylumSelect = createFilterSelect("Phylum", phyla, selected.phylum, "phylum", attributes);
+      const classSelect = createFilterSelect("Class", classes, selected.class_name, "class_name", attributes);
+
+      form.appendChild(kingdomSelect);
+      form.appendChild(phylumSelect);
+      form.appendChild(classSelect);
+
+      // Re-initialize HTMX after injecting new content
+      htmx.process(form);
+    }
+
+    // Build filters when the page is first loaded
+    document.addEventListener("DOMContentLoaded", () => {
+      updateFilters();
+    });
+
+    // Rebuild filters after HTMX content replacement
+    document.body.addEventListener('htmx:afterSettle', (event) => {
+      if (event.detail.target.id === 'organism-results') {
+          console.log(event.detail);
+          updateFilters();
+      }
+    });
+</script>
