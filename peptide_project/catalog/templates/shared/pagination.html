@@ -2,7 +2,7 @@
 <div class="pagination">
     {% if page_obj.has_previous %}
     <a hx-get="?page={{ page_obj.previous_page_number }}&query={{ query|urlencode }}&organism={{ selected_organism|urlencode }}"
-       hx-target="#protein-results"
+       hx-target="#protein-results, #organism-results"
        hx-push-url="true"
        hx-swap="innerHTML"
        hx-include="#filters-form, #protein-filters"
@@ -13,7 +13,7 @@
 
     {% if page_obj.has_next %}
     <a hx-get="?page={{ page_obj.next_page_number }}&query={{ query|urlencode }}&organism={{ selected_organism|urlencode }}"
-       hx-target="#protein-results"
+       hx-target="#protein-results, #organism-results"
        hx-push-url="true"
        hx-swap="innerHTML"
        hx-include="#filters-form, #protein-filters"
