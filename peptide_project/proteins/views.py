@@ -1,9 +1,12 @@
 from django.core.paginator import Paginator
-from django.db.models import Q
-from django.shortcuts import render
 from django.db.models import Count
+from django.db.models import Q, Case, When, Value, IntegerField
+from django.shortcuts import render
+
 from catalog.models import Organism
 from proteins.models import Protein
+
+
 def protein_list(request):
     query = request.GET.get("query", "")
     organism_name = request.GET.get("organism")
@@ -22,7 +25,13 @@ def protein_list(request):
 
     # Añadir atributos solo a las proteínas de esta página
     for protein in page_obj:
-        refs = protein.sequence.references.all()
+        refs = protein.sequence.references.annotate(
+            priority=Case(
+                When(database='UniProt Swiss-Prot', then=Value(0)),
+                default=Value(1),
+                output_field=IntegerField()
+            )
+        ).order_by('priority', 'database', 'db_accession')
         if refs:
             first = refs[0].__format__("html")
         else:

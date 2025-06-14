@@ -1,0 +1,23 @@
+{% load static %}
+<div class="pagination">
+    {% if page_obj.has_previous %}
+    <a hx-get="?page={{ page_obj.previous_page_number }}&query={{ query|urlencode }}&organism={{ selected_organism|urlencode }}"
+       hx-target="#protein-results"
+       hx-push-url="true"
+       hx-swap="innerHTML"
+       hx-include="#filters-form, #protein-filters"
+    > Previous</a>
+    {% endif %}
+
+    <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+
+    {% if page_obj.has_next %}
+    <a hx-get="?page={{ page_obj.next_page_number }}&query={{ query|urlencode }}&organism={{ selected_organism|urlencode }}"
+       hx-target="#protein-results"
+       hx-push-url="true"
+       hx-swap="innerHTML"
+       hx-include="#filters-form, #protein-filters"
+    > Next</a>
+
+    {% endif %}
+</div>
