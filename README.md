@@ -60,3 +60,65 @@ For questions, ideas or collaboration proposals, contact:<br>
 
 * **[Maite Bernaus Gimeno]** – [[maite.bernaus@gmail..com]()] <br>
 * GitHub: [@MaiteBG](https://github.com/MaiteBG)
+
+___
+
+## 📅 Project Progress Overview
+
+## 14/06/2025
+
+## 📚 Learning Features
+
+- Set up a professional development environment with:
+  - Docker and `docker-compose`
+  - `.env` environment variables
+  - Automated DB initialization scripts (`init-db.sh` / `.ps1`)
+- Modular Django architecture with multiple apps
+- Custom logging system with `logger_base.py`
+- API integration with UniProt via service layer
+- Clean design patterns in services, views, and templates
+- Dynamic filter handling with **HTMX**
+- Separation of views to manage hierarchical taxonomy filters
+- Custom Django `template tags` for reusability and clarity
+
+### *JavaScript* Concepts
+
+- **DOM manipulation (indirect)**: Understanding how elements are updated and targeted in the DOM using `hx-target`,
+  `hx-swap`, etc.
+- **AJAX basics**: HTMX abstracts away XMLHttpRequest or `fetch`, but familiarity with HTTP verbs and async updates is
+  necessary.
+- **Pagination logic**: Implementing server-side pagination with dynamic frontend updates using HTMX links or buttons
+  helps understand:
+  - How pagination works behind the scenes (e.g. updating a portion of the page without full reload)
+  - Request-response patterns for paginated data
+  - Replacing or appending content dynamically with `hx-swap`
+- **Progressive enhancement**: Ensuring the app remains functional with server-rendered HTML while providing dynamic
+  updates.
+- **Event handling**: Implicit understanding of user-triggered events like `click`, `change`, `submit`, which HTMX binds
+  to automatically.
+- **Component thinking**: Designing views and templates as reusable components similar to frontend JS frameworks.
+- **Debugging tools**: Using browser dev tools (Network/Console) to inspect request/response cycles triggered by HTMX.
+- **Client-server lifecycle**: Understanding how partial updates from Django views replace or augment content without a
+  full page reload.
+
+## App Features
+
+### Backend
+
+- Data models with clear relations between Organism, Protein, Reference, and external databases
+- Management of cross-references with UniProt
+- Logic to extract and associate gene names and synonyms
+- Integrated logging system using a `UserActionLog` model
+- Multi-database setup support (different type of users)
+
+### Frontend
+
+- **Bootstrap** integrated for UI styling and layout
+- Sidebar with dynamic organism filters using HTMX
+- Paginated and searchable protein list view
+- Expandable sections for long texts like protein functions or reference lists ("Show more" toggle)
+- Fully functional organism dropdowns with hierarchical taxonomy logic
+- Improved main page layout (layout, dropdowns, sidebar)
+- Taxonomy filter supporting hierarchical structure (parent-child taxons)
+
+
