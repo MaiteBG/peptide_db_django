@@ -1,6 +1,8 @@
 FROM python:3.11-slim
 ENV PROJECT_NAME=peptide_project
 
+COPY init-db.sh /docker-entrypoint-initdb.d/init-db.sh
+RUN chmod +x /docker-entrypoint-initdb.d/init-db.sh
 
 # Instala dependencias básicas
 RUN apt-get update && apt-get install -y \
