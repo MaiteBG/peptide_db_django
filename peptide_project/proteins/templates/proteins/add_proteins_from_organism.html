@@ -1,0 +1,39 @@
+{% extends "shared/base.html" %}
+{% load static %}
+{% block content %}
+
+<h2>Add Proteins from Organism</h2>
+
+{% if messages %}
+<ul class="messages">
+    {% for message in messages %}
+    <li class="{{ message.tags }}">{{ message |linebreaksbr | safe }}</li>
+    {% endfor %}
+</ul>
+{% endif %}
+
+<form method="post">
+    {% csrf_token %}
+
+    {{ form.as_p }}
+
+    <p>
+        Add a new organism:
+        <input type="text" name="new_organism_scientific_name" placeholder="New organism scientific name">
+        <button type="submit" name="action" value="add_organism">Add organism</button>
+    </p>
+
+    <!-- Lista desplegable para elegir un organismo existente -->
+    <label for="organism_select">Add/update proteins from an existing organism:</label>
+    <select id="organism_select" name="existing_organism_scientific_name">
+        <option value="">-- Choose an organism --</option>
+        {% for org in organisms %}
+        <option value="{{ org.scientific_name }}">{{ org.scientific_name }}</option>
+        {% endfor %}
+    </select>
+
+    <button type="submit" name="action" value="add_protein">Add Protein</button>
+</form>
+
+
+{% endblock %}

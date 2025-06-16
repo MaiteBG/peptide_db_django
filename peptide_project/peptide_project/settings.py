@@ -88,20 +88,28 @@ DATABASES = {
     'default': {  # Connexion with admin
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': env('PEPTIDE_DB'),
-        'USER': env('POSTGRES_ADMIN'),
-        'PASSWORD': env('POSTGRES_ADMIN_PASS'),
+        'USER': env('POSTGRES_SUPERUSER'),
+        'PASSWORD': env('POSTGRES_SUPERUSER_PASS'),
         'HOST': env('POSTGRES_HOST'),
         'PORT': env('POSTGRES_PORT'),
     },
-    'user': {  # Connexion with user
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': env('PEPTIDE_DB'),
-        'USER': env('POSTGRES_USER'),
-        'PASSWORD': env('POSTGRES_USER_PASS'),
-        'HOST': env('POSTGRES_HOST'),
-        'PORT': env('POSTGRES_PORT'),
+
+}
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/1",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
     }
 }
+
+CELERY_BROKER_URL = env('CELERY_BROKER_URL')
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators

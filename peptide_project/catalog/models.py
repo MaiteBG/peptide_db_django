@@ -272,6 +272,7 @@ class Organism(models.Model):
         if len(kwargs) == 1:
             # Caso: solo se pasa el scientific_name
             _, scientific_name = next(iter(kwargs.items()))
+
             try:
                 data = Organism._find_organism_data(scientific_name)
                 organism, created = Organism.objects.get_or_create(scientific_name=data["scientific_name"],
