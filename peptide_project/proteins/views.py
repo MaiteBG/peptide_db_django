@@ -116,3 +116,31 @@ class AddProteinView(View):
 
         organisms = Organism.objects.all()
         return render(request, self.template_name, {"organisms": organisms})
+
+
+import uuid
+from django.shortcuts import render
+from django.http import JsonResponse
+from .services import long_task_with_progress
+
+
+def test_progress_page(request):
+    return render(request, "proteins/progress_test.html")
+
+
+# Vista para lanzar la tarea
+def start_task(request):
+    task_id = str(uuid.uuid4())
+    long_task_with_progress.delay(task_id)
+    return JsonResponse({"task_id": task_id})
+
+
+from django.core.cache import cache
+from django.http import JsonResponse
+
+
+# Vista para consultar progreso
+def get_progress(request, task_id):
+    print("get progees...")
+    progress = cache.get(task_id, "Not started")
+    return JsonResponse({"progress": progress})

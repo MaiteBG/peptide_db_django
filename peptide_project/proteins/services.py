@@ -238,3 +238,16 @@ def create_proteins_from_metadata(proteins_metadata: list[dict], organism=None, 
             print(e)
 
     return created_proteins
+
+
+from celery import shared_task
+from django.core.cache import cache
+import time
+
+
+@shared_task
+def long_task_with_progress(task_id):
+    for i in range(1, 11):
+        cache.set(task_id, f"Progress: {i * 10}%")
+        time.sleep(1)
+    cache.set(task_id, "Task completed!")

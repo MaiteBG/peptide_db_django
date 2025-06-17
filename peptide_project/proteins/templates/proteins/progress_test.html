@@ -1,0 +1,24 @@
+<button id="start-btn">Start Long Task</button>
+<div>Task ID: <span id="task-id-display">None</span></div>
+<div id="progress-display">Progress will appear here</div>
+
+<script>
+    document.getElementById("start-btn").addEventListener("click", function () {
+        fetch("/proteins/start-task/")
+            .then(response => response.json())
+            .then(data => {
+                const taskId = data.task_id;
+                document.getElementById("task-id-display").innerText = taskId;  // Mostrar task_id aquí
+                const interval = setInterval(() => {
+                    fetch(`/proteins/get-progress/${taskId}/`)
+                        .then(resp => resp.json())
+                        .then(data => {
+                            document.getElementById("progress-display").innerText = data.progress;
+                            if (data.progress === "Task completed!") {
+                                clearInterval(interval);
+                            }
+                        });
+                }, 2000);
+            });
+    });
+</script>

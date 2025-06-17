@@ -47,5 +47,15 @@ services:
     ports:
       - "6379:6379"                             # Map Redis default port
 
+  celery:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: celery -A peptide_project worker -l info
+    volumes:
+      - .:/peptide_project
+    depends_on:
+      - redis
+      - db
 volumes:
   pgdata:                                        # Named volume for persistent Postgres data
