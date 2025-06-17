@@ -1,50 +1,51 @@
 services:
   web:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: .                # Build the Docker image from the current directory
+      dockerfile: Dockerfile    # Use this Dockerfile
+    command: sh -c "python manage.py makemigrations && python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
     ports:
-      - "8000:8000"
+      - "8000:8000"             # Map port 8000 of host to port 8000 of container (Django default)
     volumes:
-      - .:/app
+      - .:/peptide_project                  # Mount current directory into /app in container (for live code updates)
     environment:
-      - DJANGO_SETTINGS_MODULE
+      - POSTGRES_HOST=${DOCKER_POSTGRES_HOST}   # Override .env value, DB hostname inside Docker network
+      - POSTGRES_PORT=${DOCKER_POSTGRES_PORT}   # Override .env value, DB port inside Docker network
+      - DJANGO_SETTINGS_MODULE                  # Django settings module to use (set in .env or elsewhere)
     depends_on:
       db:
-        condition: service_healthy
+        condition: service_healthy               # Wait for DB service to be healthy before starting
       redis:
-        condition: service_started  # este es el default (como si fuera solo "- redis")
-
+        condition: service_started               # Wait for Redis service to start (default behavior)
 
   db:
-    image: postgres:16
+    image: postgres:16                            # Use official Postgres image, version 16
     env_file:
-      - .env
+      - .env                                     # Load environment variables from .env file
     environment:
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_USER=${POSTGRES_SUPERUSER}
-      - POSTGRES_PASSWORD=${POSTGRES_SUPERUSER_PASS}
+      - POSTGRES_DB=${POSTGRES_DB}               # Database name (from .env)
+      - POSTGRES_USER=${POSTGRES_SUPERUSER}      # DB superuser name (from .env)
+      - POSTGRES_PASSWORD=${POSTGRES_SUPERUSER_PASS} # DB superuser password (from .env)
     ports:
-      - "5433:5432"
+      - ${DOCKER_POSTGRES_EXTERNAL_PORT}:${DOCKER_POSTGRES_PORT} # Map host port to container port for DB access
     volumes:
-      - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
-      - pgdata:/var/lib/postgresql/data
+      - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh  # Init script for DB setup
+      - pgdata:/var/lib/postgresql/data                      # Persist DB data in a Docker volume
     healthcheck:
       test:
         [
           "CMD-SHELL",
           "psql -U ${POSTGRES_RESTRICTED_USER} -d ${POSTGRES_DB} -c '\\q'"
-        ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 5s
+        ]                                         # Check DB connection for health status
+      interval: 10s                               # How often to run healthcheck
+      timeout: 5s                                # Timeout for each healthcheck
+      retries: 5                                 # Number of retries before marking unhealthy
+      start_period: 5s                           # Initial wait time before starting healthchecks
 
   redis:
-    image: redis:7
+    image: redis:7                               # Use official Redis image, version 7
     ports:
-      - "6379:6379"
-
+      - "6379:6379"                             # Map Redis default port
 
 volumes:
-  pgdata:
+  pgdata:                                        # Named volume for persistent Postgres data
