@@ -1,5 +1,5 @@
 {% load tooltip_tags %}
-
+{% load pagination_tag %}
 <!-- Main container for organism results and filtering -->
 <div id="organism-results"
      data-kingdoms='{{ kingdoms_json|escapejs }}'
@@ -21,7 +21,11 @@
 </div>
 
 <!-- Check if there are organisms to display -->
+
+
 {% if organisms %}
+{% htmx_pagination page_obj "#organism-results" "&query={{ query }}" %}
+
 {% for organism in organisms %}
 <div class="organism-card">
     <div class="organism-block">

@@ -85,7 +85,7 @@ class PeptideSequence(models.Model):
         """
         id_part = f"id={self.id}" if self.id else "unsaved"
         aa_seq_preview = self.get_seq_preview()
-        refs = self.references.all()
+        refs = self.references.order_by('database', 'db_accession')
         if refs.exists():
             ref_list = ", ".join(ref.__repr__() for ref in refs[:2])
         else:
@@ -110,7 +110,8 @@ class PeptideSequence(models.Model):
         """
         sequence_id = f"{self.id}" if self.id else "(unsaved)"
         seq_preview = self.get_seq_preview()
-        refs = self.references.all()
+        refs = self.references.order_by('database', 'db_accession')
+
 
         if spec == "all":
             reference_str = "\n".join(
@@ -271,6 +272,7 @@ class Organism(models.Model):
         if len(kwargs) == 1:
             # Caso: solo se pasa el scientific_name
             _, scientific_name = next(iter(kwargs.items()))
+
             try:
                 data = Organism._find_organism_data(scientific_name)
                 organism, created = Organism.objects.get_or_create(scientific_name=data["scientific_name"],
