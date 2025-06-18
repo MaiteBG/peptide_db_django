@@ -1,67 +1,107 @@
+/* Global body styling */
 body {
-    font-family: 'Segoe UI', sans-serif;
-    background-color: #f4f6f8;
+    font-family: 'Segoe UI', sans-serif;       /* Clean, modern font */
+    background-color: #f4f6f8;                 /* Light gray background for subtle contrast */
     margin: 0;
-    padding: 2rem;
+    padding: 2rem;                             /* Outer padding for breathing room */
 }
 
+/* Container for organism cards */
 .organism-container {
     display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
+    flex-direction: column;                   /* Stack cards vertically */
+    gap: 1.5rem;                              /* Space between cards */
 }
 
+/* Individual organism card style */
 .organism-card {
-    background-color: white;
-    border-radius: 10px;
-    padding: 1rem 1.5rem;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    background-color: white;                  /* Card background */
+    border-radius: 10px;                      /* Rounded corners */
+    padding: 1rem 1.5rem;                     /* Inner spacing */
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);  /* Soft shadow for depth */
     line-height: 1;
-    transition: transform 0.2s;
+    transition: transform 0.2s;               /* Smooth hover animation */
 }
 
 .organism-card:hover {
-    transform: translateY(-1px);
+    transform: translateY(-1px);              /* Slight lift on hover */
 }
 
+/* Link style inside organism cards */
 .organism-card a {
-    color: #0077cc;
+    color: #0077cc;                           /* Blue link */
     text-decoration: none;
 }
 
-
+/* Style for when there are no results */
 .no-results {
     color: #888;
     font-style: italic;
     margin-top: 2rem;
 }
+
+/* Spacing block between organisms */
 .organism-block {
-  margin-bottom: 2rem;
+    margin-bottom: 2rem;
 }
 
+/* Indented details for organism metadata */
 .organism-details {
-  margin-left: 2rem; /* "tabulación" visual */
+    margin-left: 2rem;                        /* Visual indentation */
 }
 
+/* Additional taxonomic information spacing */
 .taxonomy-details {
-  margin-left: 2rem;
-  margin-top: 0.5rem;
+    margin-left: 2rem;
+    margin-top: 0.5rem;
 }
 
-
+/* Sidebar filters container */
 .sidebar-filters {
-  position: fixed;
-  top: 10px;    /* separación arriba */
-  left: 20px;   /* separación izquierda */
-  width: 250px; /* ancho fijo para que no se comprima */
-  height: calc(100vh - 20px); /* altura máxima para que no se salga */
-  overflow-y: auto; /* si hay mucho contenido, añade scroll interno */
+    position: fixed;
+    top: 10px;                                /* Distance from top */
+    left: 20px;                               /* Distance from left edge */
+    width: 250px;                             /* Fixed width */
+    height: calc(100vh - 20px);               /* Full vertical height minus top padding */
+    overflow-y: auto;                         /* Scrollable if content exceeds height */
 }
 
+/* Main layout container */
 .container {
-  max-width: 1100px;
-  margin: 0 auto;
-  display: flex;
-  gap: 20px; /* espacio entre filtros y contenido */
-  padding: 10px;
+    max-width: 1100px;
+    margin: 0 auto;
+    display: flex;
+    gap: 20px;                                /* Space between sidebar and content */
+    padding: 10px;
+}
+/* Simple Pagination styling */
+.pagination {
+    display: flex;
+
+    align-items: center;
+    gap: 8px;                      /* Reduced spacing */
+    margin: 1.5rem 0;
+    font-family: sans-serif;
+    font-size: 0.9rem;
+    color: #333;
+}
+
+.pagination span {
+    font-weight: normal;           /* Less emphasis */
+}
+
+/* Links with minimal styling */
+.pagination a {
+    color: #0077cc;
+    padding: 4px 10px;
+    text-decoration: underline;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+    background-color: #e0e0e0;
+
+}
+
+/* Subtle hover effect */
+.pagination a:hover {
+    background-color: #a0a0a0;
 }

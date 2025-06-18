@@ -1,4 +1,5 @@
-{% extends "catalog/base.html" %}
+{% extends "shared/base.html" %}
+{% load pagination_tag %}
 
 {% block content %}
 
@@ -22,18 +23,23 @@
 
   <main style="margin-left: 270px;">
     <form id="protein-filters" style="margin-bottom: 10px;">
-      <input type="text" name="query" placeholder="Search..."
+      <input type="text" name="query" id="query" placeholder="Search..."
              value="{{ query|default:'' }}"
              hx-get="{% url 'protein-list' %}"
              hx-target="#protein-results"
              hx-push-url="true"
              hx-trigger="keyup changed delay:300ms"
+             hx-include="#filters-form, #protein-filters"
              style="width: 100%; padding: 6px; box-sizing: border-box;">
     </form>
 
     <div id="protein-results">
+
       {% include "proteins/protein_list_page.html" %}
+
     </div>
+
+
   </main>
 
 </div>
@@ -55,15 +61,22 @@
   const selectedOrganism = "{{ selected_organism|default:'' }}";
 
 
-  document.addEventListener("DOMContentLoaded", () => {
-      const attributes = {
-          'hx-get': "{% url 'protein-list' %}",
-          'hx-target': "#protein-results",
-          'hx-trigger': "change",
-          'hx-push-url': "true"
-      };
-      const selectElement = createFilterSelect("Organism", organisms, selectedOrganism, "organism", attributes);
-      document.getElementById("filters-form").appendChild(selectElement);
-  });
+document.addEventListener("DOMContentLoaded", () => {
+  const initialOrganism = "{{ selected_organism|default:'' }}";
+
+  const attributes = {
+      'hx-get': "{% url 'protein-list' %}",
+      'hx-target': "#protein-results",
+      'hx-trigger': "change",
+      'hx-push-url': "true",
+      'hx-include': "#filters-form, #protein-filters"
+  };
+
+  const selectElement = createFilterSelect("Organism", organisms, initialOrganism, "organism", attributes);
+  document.getElementById("filters-form").appendChild(selectElement);
+});
+
 </script>
+
+
 {% endblock %}

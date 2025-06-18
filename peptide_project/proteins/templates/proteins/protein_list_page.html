@@ -1,12 +1,6 @@
-<table>
-    <thead>
-    <tr>
-        <th>Accession</th>
-        <th>Nombre</th>
-    </tr>
-    </thead>
+{% load pagination_tag %}
 
-    <tbody>
+{% htmx_pagination page_obj "#protein-results" "&query={{ query }}&organism={{ selected_organism }}" %}
 
     {% for protein in page_obj %}
     <div class="organism-card">
@@ -62,23 +56,8 @@
     <p class="no-results">No proteins found.</p>
 
     {% endfor %}
-    </tbody>
-</table>
 
-<div class="pagination">
-    {% if page_obj.has_previous %}
-    <a hx-get="?page={{ page_obj.previous_page_number }}&query={{ query }}"
-       hx-target="#protein-results"
-       hx-push-url="true"
-       hx-swap="innerHTML">Anterior</a>
-    {% endif %}
 
-    <span>Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+{% htmx_pagination page_obj "#protein-results" "&query={{ query }}&organism={{ selected_organism }}" %}
 
-    {% if page_obj.has_next %}
-    <a hx-get="?page={{ page_obj.next_page_number }}&query={{ query }}"
-       hx-target="#protein-results"
-       hx-push-url="true"
-       hx-swap="innerHTML">Siguiente</a>
-    {% endif %}
-</div>
+
