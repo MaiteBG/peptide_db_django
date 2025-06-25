@@ -134,7 +134,7 @@ class PeptideSequence(models.Model):
         replacements = {
             # to add replacements
         }
-
+        print(references)
         for ref in references:
             db_name = ref.get("database")
             db_name = replacements.get(db_name, db_name)

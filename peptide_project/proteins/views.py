@@ -1,13 +1,16 @@
+from celery import shared_task
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Count
 from django.db.models import Q, Case, When, Value, IntegerField
-from django.shortcuts import render, redirect
 from django.views import View
 
 from catalog.models import Organism
 from proteins.models import Protein
 from proteins.services import get_proteins_from_organism, get_protein_metadata, create_proteins_from_metadata
+
+from django.core.cache import cache
+from django.http import JsonResponse
 
 
 def protein_list(request):
@@ -64,83 +67,83 @@ def protein_list(request):
     return render(request, "proteins/protein_list.html", context)
 
 
-class ProteinForm:
-    pass
-
-
 class AddProteinView(View):
     template_name = "proteins/add_proteins_from_organism.html"
+    partial_template_name = "shared/_task_progress.html"
 
     def get(self, request):
         organisms = Organism.objects.order_by("scientific_name")
         return render(request, self.template_name, {"organisms": organisms})
 
     def post(self, request):
+        organisms = Organism.objects.order_by("scientific_name")
         action = request.POST.get("action")
+        print(action)
         context_messages = []
+        context = {
+            "organisms": organisms,
+        }
 
         if action == "add_organism":
             sci_name = request.POST.get("new_organism_scientific_name", "").strip()
-
             if not sci_name:
                 context_messages.append("Scientific name cannot be empty.")
             else:
                 formatted_name = sci_name.lower().capitalize()
-
                 try:
                     organism, created = Organism.get_or_create_organism(scientific_name=formatted_name)
                     if created:
                         context_messages.append(f"Organism '{formatted_name}' has been successfully added.")
                     else:
                         context_messages.append(
-                            f"Organism '{formatted_name}' already exists: {organism.__format__('all')}")
+                            f"Organism '{formatted_name}' already exists: {organism.__format__('all')}"
+                        )
                 except Exception as e:
                     context_messages.append(f"An error occurred while adding the organism: {str(e)}")
 
-
+            for msg in context_messages:
+                messages.info(request, msg)
 
         elif action == "add_protein":
-            # Aquí procesas el formulario proteína
-            sci_name = request.POST.get("existing_organism_scientific_name")
-            organism, _ = Organism.get_or_create_organism(scientific_name=sci_name)
-            proteins = get_proteins_from_organism(organism)
-            proteins_meta = get_protein_metadata(proteins)
-            created_proteins = create_proteins_from_metadata(proteins_meta, organism)
-            # ...
+            sci_name = request.POST.get("existing_organism_scientific_name", "").strip()
+            if not sci_name:
+                context_messages.append("Please select or enter a scientific name.")
+                for msg in context_messages:
+                    messages.info(request, msg)
+            else:
+                # Lanzar tarea sólo si hay sci_name válido
+                task_id = str(uuid.uuid4())
+                task_add_proteins.delay(sci_name, task_id)
+                context["selected_organism"] = sci_name
+                context["task_id"] = task_id
 
-            return redirect("protein-list")
+        # Si es petición HTMX, devolver solo el fragmento parcial
+        if request.headers.get("HX-Request"):
+            return render(request, self.partial_template_name, context)
 
-        # Store Django messages for the frontend (if using Django messages framework)
-        for msg in context_messages:
-            messages.info(request, msg)
-
-        organisms = Organism.objects.all()
-        return render(request, self.template_name, {"organisms": organisms})
+        # En cualquier otro caso (o si no es HTMX), renderizar la plantilla completa
+        return render(request, self.template_name, context)
 
 
 import uuid
 from django.shortcuts import render
-from django.http import JsonResponse
-from .services import long_task_with_progress
 
 
-def test_progress_page(request):
-    return render(request, "proteins/progress_test.html")
-
-
-# Vista para lanzar la tarea
-def start_task(request):
-    task_id = str(uuid.uuid4())
-    long_task_with_progress.delay(task_id)
-    return JsonResponse({"task_id": task_id})
-
-
-from django.core.cache import cache
-from django.http import JsonResponse
+@shared_task
+def task_add_proteins(sci_name, task_id):
+    cache.set(task_id, f"Organism validations...")
+    organism, _ = Organism.get_or_create_organism(scientific_name=sci_name)
+    cache.set(task_id, f"Getting organism proteins...")
+    proteins = get_proteins_from_organism(organism)
+    cache.set(task_id, f"Getting organism proteins metadata...")
+    proteins_meta = get_protein_metadata(proteins)
+    cache.set(task_id, f"Adding organism proteins to database...")
+    created_proteins = create_proteins_from_metadata(proteins_meta, organism)
+    cache.set(task_id, "Task completed")
+    return created_proteins
 
 
 # Vista para consultar progreso
 def get_progress(request, task_id):
-    print("get progees...")
     progress = cache.get(task_id, "Not started")
-    return JsonResponse({"progress": progress})
+    return render(request, "shared/progress_status.html", {"progress": progress,})
