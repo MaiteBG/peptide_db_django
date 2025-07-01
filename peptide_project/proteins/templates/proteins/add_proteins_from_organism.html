@@ -1,16 +1,15 @@
 {% extends "shared/base.html" %}
 {% load static %}
 
-{% block content %}
+{% block pre_messages %}
 <h2>Add Proteins from Organism</h2>
 
-{% if messages %}
-  <ul class="messages">
-    {% for message in messages %}
-      <li class="message {{ message.tags }}">{{ message|linebreaksbr|safe }}</li>
-    {% endfor %}
-  </ul>
-{% endif %}
+{% endblock %}
+
+
+
+{% block content %}
+
 
 <!-- {% if message.level == DEFAULT_MESSAGE_LEVELS.ERROR %} ... {% endif %} -->
 
