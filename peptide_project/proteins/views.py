@@ -78,8 +78,6 @@ class AddProteinView(View):
     def post(self, request):
         organisms = Organism.objects.order_by("scientific_name")
         action = request.POST.get("action")
-        print(action)
-        context_messages = []
         context = {
             "organisms": organisms,
         }
@@ -87,33 +85,30 @@ class AddProteinView(View):
         if action == "add_organism":
             sci_name = request.POST.get("new_organism_scientific_name", "").strip()
             if not sci_name:
-                context_messages.append("Scientific name cannot be empty.")
+                messages.error(request, "Scientific name cannot be empty.")
             else:
                 formatted_name = sci_name.lower().capitalize()
                 try:
                     organism, created = Organism.get_or_create_organism(scientific_name=formatted_name)
                     if created:
-                        context_messages.append(f"Organism '{formatted_name}' has been successfully added.")
+                        messages.success(request,f"Organism {formatted_name} has been successfully added.")
                     else:
-                        context_messages.append(
-                            f"Organism '{formatted_name}' already exists: {organism.__format__('all')}"
-                        )
+                        messages.warning(request,
+                            f"Organism '{formatted_name}' already exists")
+                    messages.info(request,
+                                     f"{organism.__format__('all')}")
                 except Exception as e:
-                    context_messages.append(f"An error occurred while adding the organism: {str(e)}")
-
-            for msg in context_messages:
-                messages.info(request, msg)
+                    messages.error(request, f"An error occurred while adding the organism: {str(e)}")
 
         elif action == "add_protein":
             sci_name = request.POST.get("existing_organism_scientific_name", "").strip()
             if not sci_name:
-                context_messages.append("Please select or enter a scientific name.")
-                for msg in context_messages:
-                    messages.info(request, msg)
+                messages.error(request, "Please select or enter a scientific name.")
             else:
                 # Lanzar tarea sólo si hay sci_name válido
                 task_id = str(uuid.uuid4())
                 task_add_proteins.delay(sci_name, task_id)
+
                 context["selected_organism"] = sci_name
                 context["task_id"] = task_id
 
@@ -130,20 +125,23 @@ from django.shortcuts import render
 
 
 @shared_task
-def task_add_proteins(sci_name, task_id):
-    cache.set(task_id, f"Organism validations...")
+def task_add_proteins( sci_name, task_id):
+    cache.set(task_id, {'progress' :f"Organism validations...", 'info':"", 'warnings':""})
     organism, _ = Organism.get_or_create_organism(scientific_name=sci_name)
-    cache.set(task_id, f"Getting organism proteins...")
+    cache.set(task_id, {'progress' :f"Getting organism proteins...", 'info':"", 'warnings':""})
     proteins = get_proteins_from_organism(organism)
-    cache.set(task_id, f"Getting organism proteins metadata...")
+    cache.set(task_id, {'progress': f"Getting proteins metadata...", 'info': "", 'warnings': ""})
     proteins_meta = get_protein_metadata(proteins)
-    cache.set(task_id, f"Adding organism proteins to database...")
-    created_proteins = create_proteins_from_metadata(proteins_meta, organism)
-    cache.set(task_id, "Task completed")
+    cache.set(task_id, {'progress': f"Adding organism proteins to database...", 'info': "", 'warnings': ""})
+    created_proteins, not_inside_db= create_proteins_from_metadata(proteins_meta, organism)
+    cache.set(task_id, {'progress': f"Task completed", 'info': "", 'warnings': f"{not_inside_db}"})
+    print("fin")
     return created_proteins
 
 
 # Vista para consultar progreso
 def get_progress(request, task_id):
-    progress = cache.get(task_id, "Not started")
-    return render(request, "shared/progress_status.html", {"progress": progress,})
+    progress = cache.get(task_id, {'progress': f"Not started", 'info': "", 'warnings': "patataa"})
+    warnings ="hola"
+
+    return render(request, "shared/progress_status.html", {"progress": progress,"warnings": warnings})

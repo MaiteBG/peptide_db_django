@@ -105,3 +105,29 @@ body {
 .pagination a:hover {
     background-color: #a0a0a0;
 }
+
+
+
+.message.success {
+    color: green;
+    background-color: #d4edda;
+    border: 1px solid #c3e6cb;
+}
+
+.message.error {
+    color: red;
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+}
+
+.message.warning {
+    color: orange;
+    background-color: #fff3cd;
+    border: 1px solid #ffeeba;
+}
+
+.message.info {
+    color: blue;
+    background-color: #d1ecf1;
+    border: 1px solid #bee5eb;
+}

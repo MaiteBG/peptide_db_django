@@ -5,12 +5,14 @@
 <h2>Add Proteins from Organism</h2>
 
 {% if messages %}
-<ul class="messages">
+  <ul class="messages">
     {% for message in messages %}
-    <li class="{{ message.tags }}">{{ message|linebreaksbr|safe }}</li>
+      <li class="message {{ message.tags }}">{{ message|linebreaksbr|safe }}</li>
     {% endfor %}
-</ul>
+  </ul>
 {% endif %}
+
+<!-- {% if message.level == DEFAULT_MESSAGE_LEVELS.ERROR %} ... {% endif %} -->
 
 <!-- Formulario para agregar organismo -->
 <form

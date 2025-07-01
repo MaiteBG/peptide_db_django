@@ -210,7 +210,7 @@ def create_proteins_from_metadata(proteins_metadata: list[dict], organism=None, 
         list[Protein]: List of created Protein instances.
     """
     created_proteins = []
-
+    not_inside_db = set()
     for meta in proteins_metadata:
         seq_str = meta.get("sequence")
         if not seq_str:
@@ -222,8 +222,8 @@ def create_proteins_from_metadata(proteins_metadata: list[dict], organism=None, 
         )
 
         references = meta.get("references")
-        sequence_obj.add_references(references)
-
+        not_inside_db = not_inside_db.union(sequence_obj.add_references(references))
+        print(not_inside_db)
         # Create protein instance
         try:
             protein = Protein.objects.get_or_create(
@@ -238,5 +238,5 @@ def create_proteins_from_metadata(proteins_metadata: list[dict], organism=None, 
         except Exception as e:
             print(e)
 
-    return created_proteins
+    return created_proteins, not_inside_db
 

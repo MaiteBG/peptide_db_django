@@ -134,7 +134,7 @@ class PeptideSequence(models.Model):
         replacements = {
             # to add replacements
         }
-        print(references)
+        not_inside_db = set() # may future warning
         for ref in references:
             db_name = ref.get("database")
             db_name = replacements.get(db_name, db_name)
@@ -153,8 +153,9 @@ class PeptideSequence(models.Model):
 
             except Database.DoesNotExist:
                 # print(f"La base de datos '{db_name}' no existe.")
+                not_inside_db.add(db_name)
                 continue
-
+        return not_inside_db
 
 # --- Organism Model ---
 

@@ -1,5 +1,5 @@
-<span>{{ progress|lower }}</span>
+<span>{{ progress}} {{ info }}  aaa{{ warnings}} </span>
 
-{% if "task completed" in progress|lower %}
+{% if "task completed" in progress %}
   <div class="completed-message" style="color: green">✅ ¡Tarea completada!</div>
 {% endif %}
