@@ -1,0 +1,20 @@
+<!-- shared/_task_progress.html -->
+
+<div
+  id="progress-status"
+  hx-get="/progress/{{ task_id }}/"
+  hx-trigger="poll"
+  hx-swap="innerHTML"
+>
+  Cargando progreso...
+</div>
+
+
+
+<script>
+const progressContainer = document.getElementById('progress-status');
+
+let pollingInterval = setInterval(() => {
+  htmx.trigger(progressContainer, 'poll');
+}, 1000);
+</script>

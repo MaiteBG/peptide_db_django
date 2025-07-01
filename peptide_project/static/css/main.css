@@ -77,7 +77,6 @@ body {
 /* Simple Pagination styling */
 .pagination {
     display: flex;
-
     align-items: center;
     gap: 8px;                      /* Reduced spacing */
     margin: 1.5rem 0;
@@ -104,4 +103,6 @@ body {
 /* Subtle hover effect */
 .pagination a:hover {
     background-color: #a0a0a0;
+
 }
+

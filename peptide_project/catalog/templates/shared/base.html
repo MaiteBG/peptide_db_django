@@ -38,6 +38,25 @@
 
 <!-- Main content area with spacing from fixed-top nav -->
 <main class="mt-5">
+
+    {% block pre_messages %}
+    <!-- Optional content block rendered before user messages (e.g. loading indicators, breadcrumbs, etc.) -->
+    {% endblock %}
+
+    <!-- User messages section: status updates, alerts, confirmations, etc. -->
+    <div id="messages">
+        {% if messages %}
+        {% for message in messages %}
+        <!-- Render each message with appropriate Bootstrap alert style -->
+        <div class="alert alert-{{ message.tags }}">
+
+            {{ message|linebreaksbr|safe }}
+        </div>
+        {% endfor %}
+        {% endif %}
+    </div>
+
+
     {% block content %}
     <!-- Page-specific content will be inserted here -->
     {% endblock %}
@@ -174,6 +193,6 @@
         return container;
     }
 </script>
-
+<script src="/static/js/htmx-polling-control.js"></script>
 </body>
 </html>

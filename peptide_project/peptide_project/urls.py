@@ -17,10 +17,12 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from catalog.views import OrganismListView
+from proteins.views import get_progress
 
 urlpatterns = [
     path("", OrganismListView.as_view(), name="home"),
     path('admin/', admin.site.urls),
     path("organisms/", OrganismListView.as_view(), name="organism-list"),
     path("proteins/", include("proteins.urls")),
+    path("progress/<str:task_id>/", get_progress, name="get_progress")
 ]

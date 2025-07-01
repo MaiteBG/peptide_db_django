@@ -51,6 +51,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    environment:
+      - POSTGRES_HOST=${DOCKER_POSTGRES_HOST}   # Override .env value, DB hostname inside Docker network
+      - POSTGRES_PORT=${DOCKER_POSTGRES_PORT}   # Override .env value, DB port inside Docker network
+      - DJANGO_SETTINGS_MODULE                  # Django settings module to use (set in .env or elsewhere)
     command: celery -A peptide_project worker -l info
     volumes:
       - .:/peptide_project
