@@ -77,7 +77,6 @@ body {
 /* Simple Pagination styling */
 .pagination {
     display: flex;
-
     align-items: center;
     gap: 8px;                      /* Reduced spacing */
     margin: 1.5rem 0;
@@ -107,14 +106,13 @@ body {
 }
 
 
-
 .message.success {
     color: green;
     background-color: #d4edda;
     border: 1px solid #c3e6cb;
 }
 
-.message.error {
+.message.danger {
     color: red;
     background-color: #f8d7da;
     border: 1px solid #f5c6cb;
