@@ -46,7 +46,7 @@ def create_basic_database():
         url_pattern="https://www.ebi.ac.uk/ena/browser/view/{id}"
     )
 
-
+create_basic_database()
 
 
 def _get_next_link(headers: dict) -> str | None:
@@ -172,7 +172,7 @@ def get_protein_metadata(accessions: list[str]) -> list[dict]:
 
             sequence = entry.get("sequence", {}).get("value")
 
-            # 🆕 Extraer todos los citationCrossReferences
+            # Extraer todos los citationCrossReferences
             references = entry.get("references", [])
             all_cross_refs = [{'database': "UniProt Swiss-Prot", 'id': acc}]
             for ref in references:
@@ -193,6 +193,7 @@ def get_protein_metadata(accessions: list[str]) -> list[dict]:
                 "references": all_cross_refs,
             })
 
+
     return results
 
 def create_proteins_from_metadata(proteins_metadata: list[dict], organism=None, reference=None):
@@ -209,7 +210,7 @@ def create_proteins_from_metadata(proteins_metadata: list[dict], organism=None, 
         list[Protein]: List of created Protein instances.
     """
     created_proteins = []
-
+    not_inside_db = set()
     for meta in proteins_metadata:
         seq_str = meta.get("sequence")
         if not seq_str:
@@ -221,8 +222,8 @@ def create_proteins_from_metadata(proteins_metadata: list[dict], organism=None, 
         )
 
         references = meta.get("references")
-        sequence_obj.add_references(references)
-
+        not_inside_db = not_inside_db.union(sequence_obj.add_references(references))
+        print(not_inside_db)
         # Create protein instance
         try:
             protein = Protein.objects.get_or_create(
@@ -237,17 +238,5 @@ def create_proteins_from_metadata(proteins_metadata: list[dict], organism=None, 
         except Exception as e:
             print(e)
 
-    return created_proteins
+    return created_proteins, not_inside_db
 
-
-from celery import shared_task
-from django.core.cache import cache
-import time
-
-
-@shared_task
-def long_task_with_progress(task_id):
-    for i in range(1, 11):
-        cache.set(task_id, f"Progress: {i * 10}%")
-        time.sleep(1)
-    cache.set(task_id, "Task completed!")

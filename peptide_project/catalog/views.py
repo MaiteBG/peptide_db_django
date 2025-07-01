@@ -146,3 +146,6 @@ class OrganismListView(ListView):
         if self.request.headers.get('HX-Request'):
             return render(self.request, 'catalog/organism_results.html', context)
         return super().render_to_response(context, **response_kwargs)
+
+
+
